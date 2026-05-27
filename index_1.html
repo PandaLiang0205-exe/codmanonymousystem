@@ -190,7 +190,7 @@
 
     <!-- 頁面內建的登入表單（不使用會被預覽擋掉的彈出視窗） -->
     <div id="loginForm" class="card login-form" style="display:none;">
-      <input id="loginUser" type="text" placeholder="帳號" autocomplete="off">
+      <input id="loginUser" type="text" placeholder="帳號（Email）" autocomplete="off">
       <input id="loginPass" type="password" placeholder="密碼" autocomplete="off">
       <button id="loginSubmit">登入</button>
     </div>
@@ -210,15 +210,32 @@
 
 <div id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 /* =========================================================================
-   匿名查詢系統 — 純前端版本（HTML + CSS + JavaScript，單一檔案）
-   資料儲存在瀏覽器的 localStorage，重新整理後不會消失。
+   匿名查詢系統 — Supabase 雲端版本
+   資料存在 Supabase 資料庫，所有人看到同一份；只有「登入的管理員」可以
+   新增 / 編輯 / 刪除（由資料庫的 RLS 權限規則強制保護，不是只靠前端藏按鈕）。
    ========================================================================= */
 
-/* ---------- 1. 預設資料（兩行一組的原始格式，原樣內建） ----------
-   第 1 行是名字（結尾有冒號），第 2 行是匿名亂碼（開頭有 [）。
-   下面這段文字會交給 parseRawData() 解析與清洗，不需要手動轉換。 */
+/* ---------- 0. Supabase 連線設定 ----------
+   ★ 部署前必填：到 Supabase 後台 Settings → API 複製這兩個值貼上 ★
+   anon key 是設計給前端公開使用的，放在這裡是正常且安全的；
+   ⚠ 千萬不要把 service_role key 放進來（那把鑰匙會繞過所有權限）。 */
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+
+/* 建立 Supabase 用戶端。若還沒填好設定，db 會是 null，頁面會顯示提示。 */
+let db = null;
+try {
+  if (window.supabase && SUPABASE_URL.indexOf("YOUR-PROJECT") === -1) {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (e) {}
+
+/* ---------- 1. 預設資料（兩行一組）----------
+   第一次使用、雲端資料庫是空的時候，管理員登入後會自動匯入這份當初始資料。 */
 const RAW_DATA = `
 低調：
 [8W4e29xAW02
@@ -464,76 +481,58 @@ Natasha：
 [1i2YFYv0iSo
 `;
 
-const STORAGE_KEY = "anon-lookup-data-v1";
-
-/* ===== 管理員帳號與密碼 =====
-   ★ 只有輸入正確「帳號 + 密碼」的人（也就是你）才能使用管理功能 ★
-   一般朋友只會看到查詢。
-   注意：這是靜態網站，帳密藏在檔案裡，足以擋住一般訪客，但懂技術的人檢視原始碼仍可能找到，
-   並非絕對安全。若需要真正的權限控管，要改用後端版本（Supabase）。 */
-const ADMIN_USER = "panda";
-const ADMIN_PASSWORD = "bubu0205";
-
-/* 目前所有資料，格式為 [{ name, code }, ...] */
+/* 目前所有資料：[{ id, name, code }, ...] */
 let entries = [];
-/* 目前正在編輯的那筆資料的 code（null 表示沒有在編輯） */
-let editingCode = null;
-/* 是否為管理員模式（用 sessionStorage 記住，關閉分頁就登出） */
+/* 正在編輯的那筆資料的 id（null 表示沒有在編輯） */
+let editingId = null;
+/* 是否為已登入的管理員 */
 let isAdmin = false;
-try { isAdmin = sessionStorage.getItem("anon-admin") === "1"; } catch (e) {}
 
 
-/* ---------- 2 & 3. 解析原始資料 + 清洗 ----------
-   把「兩行一組」的文字轉成 [{name, code}] 陣列，並套用清洗規則：
-   - 去掉名字結尾的全形/半形冒號
-   - 保留亂碼開頭的 [，不自動補 ]
-   - 全形［ 統一轉半形 [
-   - 以「亂碼」為唯一鍵去重複（同碼只留第一筆 → 同時涵蓋「完全重複」與「同碼不同名留第一筆」）
-   - 同名不同碼會各自保留（因為碼不同）
-   - 忽略空白行、去除前後空白 */
+/* ---------- 2 & 3. 解析 + 清洗（給「自動匯入預設」與「重置」使用） ---------- */
 function parseRawData(raw) {
-  // 切成一行一行，去掉前後空白，並忽略空白行
   const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-
   const result = [];
-  const seenCodes = new Set(); // 記錄已出現過的亂碼，用來去重複
-
-  // 每兩行一組：第 i 行是名字，第 i+1 行是亂碼
+  const seenCodes = new Set();
   for (let i = 0; i + 1 < lines.length; i += 2) {
     const name = cleanName(lines[i]);
     const code = cleanCode(lines[i + 1]);
-
-    if (!name || !code) continue;          // 任一欄為空就略過
-    if (seenCodes.has(code)) continue;     // 亂碼重複 → 略過（保留第一筆）
-
+    if (!name || !code) continue;
+    if (seenCodes.has(code)) continue;
     seenCodes.add(code);
     result.push({ name, code });
   }
   return result;
 }
-
 /* 清洗名字：移除結尾的全形「：」或半形「:」並去空白 */
-function cleanName(line) {
-  return line.replace(/[：:]\s*$/, "").trim();
-}
-
+function cleanName(line) { return line.replace(/[：:]\s*$/, "").trim(); }
 /* 清洗亂碼：全形［轉半形 [，並去空白（不自動補 ]） */
-function cleanCode(line) {
-  return line.replace(/［/g, "[").trim();
+function cleanCode(line) { return line.replace(/［/g, "[").trim(); }
+
+
+/* ---------- 4. 從 Supabase 讀取全部資料 ---------- */
+async function loadEntries() {
+  if (!db) return;
+  const { data, error } = await db
+    .from("entries")
+    .select("id,name,code")
+    .order("created_at", { ascending: true });
+  if (error) { showToast("讀取失敗：" + error.message); return; }
+  entries = data || [];
+  renderResults();
 }
 
 
-/* ---------- 4. 搜尋資料 + 顯示結果 ----------
-   即時搜尋：名字或亂碼只要包含輸入文字即算符合（不分大小寫）。
-   因為比對用的是「包含」，所以使用者打 9borl、[9borl、W3v0 都找得到。 */
+/* ---------- 5. 搜尋 + 顯示結果 ----------
+   名字或亂碼只要「包含」輸入文字即算符合（不分大小寫）；
+   搜尋欄空白時不列出全部，只顯示提示。 */
 function renderResults() {
   const query = document.getElementById("searchInput").value.trim().toLowerCase();
   const listEl = document.getElementById("results");
   const countEl = document.getElementById("count");
 
-  listEl.innerHTML = ""; // 清空舊結果（這裡清的是我們自己產生的節點，安全）
+  listEl.innerHTML = ""; // 清空我們自己產生的節點（安全）
 
-  // 搜尋欄空白時：不列出全部資料，只顯示提示，避免畫面太長太亂
   if (query === "") {
     countEl.textContent = "";
     const li = document.createElement("li");
@@ -543,13 +542,11 @@ function renderResults() {
     return;
   }
 
-  // 過濾出符合的資料
-  const matched = entries.filter(item => {
-    return item.name.toLowerCase().includes(query) ||
-           item.code.toLowerCase().includes(query);
-  });
+  const matched = entries.filter(item =>
+    item.name.toLowerCase().includes(query) ||
+    item.code.toLowerCase().includes(query)
+  );
 
-  // 沒有符合 → 顯示「查無資料」
   if (matched.length === 0) {
     countEl.textContent = "";
     const li = document.createElement("li");
@@ -561,16 +558,15 @@ function renderResults() {
 
   countEl.textContent = `共 ${matched.length} 筆結果`;
 
-  // 逐筆建立列表項目。全程使用 textContent / DOM 建立，
-  // 不使用 innerHTML 插入使用者輸入，避免 XSS 風險。
+  // 全程用 textContent / DOM 建立，不使用 innerHTML 插入使用者輸入，避免 XSS
   matched.forEach(item => {
     listEl.appendChild(
-      editingCode === item.code ? buildEditRow(item) : buildViewRow(item)
+      editingId === item.id ? buildEditRow(item) : buildViewRow(item)
     );
   });
 }
 
-/* 建立「一般顯示」的列表項目 */
+/* 建立「一般顯示」列：訪客只看到名字與亂碼；管理員才看到編輯／刪除 */
 function buildViewRow(item) {
   const li = document.createElement("li");
 
@@ -585,7 +581,6 @@ function buildViewRow(item) {
   li.appendChild(nameEl);
   li.appendChild(codeEl);
 
-  // 一般訪客（非管理員）只看到名字與亂碼，不顯示編輯／刪除按鈕
   if (!isAdmin) return li;
 
   const actions = document.createElement("div");
@@ -594,12 +589,12 @@ function buildViewRow(item) {
   const editBtn = document.createElement("button");
   editBtn.className = "secondary mini";
   editBtn.textContent = "編輯";
-  editBtn.onclick = () => { editingCode = item.code; renderResults(); };
+  editBtn.onclick = () => { editingId = item.id; renderResults(); };
 
   const delBtn = document.createElement("button");
   delBtn.className = "danger mini";
   delBtn.textContent = "刪除";
-  delBtn.onclick = () => deleteEntry(item.code);
+  delBtn.onclick = () => deleteEntry(item.id);
 
   actions.appendChild(editBtn);
   actions.appendChild(delBtn);
@@ -607,21 +602,17 @@ function buildViewRow(item) {
   return li;
 }
 
-/* 建立「編輯中」的列表項目（內含輸入框與儲存／取消按鈕） */
+/* 建立「編輯中」列（輸入框 + 儲存／取消） */
 function buildEditRow(item) {
   const li = document.createElement("li");
   const box = document.createElement("div");
   box.className = "edit-fields";
 
   const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.value = item.name;
-  nameInput.placeholder = "名字";
+  nameInput.type = "text"; nameInput.value = item.name; nameInput.placeholder = "名字";
 
   const codeInput = document.createElement("input");
-  codeInput.type = "text";
-  codeInput.value = item.code;
-  codeInput.placeholder = "匿名亂碼";
+  codeInput.type = "text"; codeInput.value = item.code; codeInput.placeholder = "匿名亂碼";
 
   const actions = document.createElement("div");
   actions.className = "result-actions";
@@ -629,16 +620,15 @@ function buildEditRow(item) {
   const saveBtn = document.createElement("button");
   saveBtn.className = "mini";
   saveBtn.textContent = "儲存";
-  saveBtn.onclick = () => saveEdit(item.code, nameInput.value, codeInput.value);
+  saveBtn.onclick = () => saveEdit(item.id, nameInput.value, codeInput.value);
 
   const cancelBtn = document.createElement("button");
   cancelBtn.className = "ghost mini";
   cancelBtn.textContent = "取消";
-  cancelBtn.onclick = () => { editingCode = null; renderResults(); };
+  cancelBtn.onclick = () => { editingId = null; renderResults(); };
 
   actions.appendChild(saveBtn);
   actions.appendChild(cancelBtn);
-
   box.appendChild(nameInput);
   box.appendChild(codeInput);
   box.appendChild(actions);
@@ -647,141 +637,97 @@ function buildEditRow(item) {
 }
 
 
-/* ---------- 5 & 12. 新增資料（含防止重複亂碼） ----------
-   規則：名字與亂碼都不能空白；亂碼若沒有 [ 則自動補上 [（但不補 ]）；
-   亂碼不能與既有資料重複。 */
-function addEntry() {
+/* ---------- 6 & 12. 新增資料（防止重複亂碼） ----------
+   亂碼的唯一性同時由資料庫的 UNIQUE 約束強制保證，重複時會收到 23505 錯誤。 */
+async function addEntry() {
+  if (!db) return;
   const nameEl = document.getElementById("addName");
   const codeEl = document.getElementById("addCode");
-
   const name = nameEl.value.trim();
-  let code = cleanCode(codeEl.value); // 全形［轉半形 [、去空白
+  let code = cleanCode(codeEl.value);
 
   if (!name) { showToast("名字不能空白"); return; }
   if (!code) { showToast("匿名亂碼不能空白"); return; }
+  if (!code.startsWith("[")) code = "[" + code; // 沒有 [ 就自動補（不補 ]）
 
-  // 沒有開頭的 [ 就自動補上（不補 ]）
-  if (!code.startsWith("[")) code = "[" + code;
-
-  // 防止重複：亂碼已存在就拒絕
-  if (entries.some(e => e.code === code)) {
-    showToast("此匿名亂碼已存在");
+  const { error } = await db.from("entries").insert({ name, code });
+  if (error) {
+    showToast(error.code === "23505" ? "此匿名亂碼已存在" : "新增失敗：" + error.message);
     return;
   }
-
-  entries.push({ name, code });
-  saveData();
-  renderResults();
-
-  // 新增成功後清空輸入欄位並提示
-  nameEl.value = "";
-  codeEl.value = "";
+  nameEl.value = ""; codeEl.value = "";
   showToast("新增成功");
+  loadEntries();
 }
 
 
-/* ---------- 6. 刪除資料（單筆，含確認） ---------- */
-async function deleteEntry(code) {
+/* ---------- 7. 刪除資料（單筆，含自訂確認框） ---------- */
+async function deleteEntry(id) {
+  if (!db) return;
   if (!(await showConfirm("確定要刪除這筆資料嗎？"))) return;
-  entries = entries.filter(e => e.code !== code);
-  if (editingCode === code) editingCode = null;
-  saveData();
-  renderResults();
+  const { error } = await db.from("entries").delete().eq("id", id);
+  if (error) { showToast("刪除失敗：" + error.message); return; }
+  if (editingId === id) editingId = null;
   showToast("已刪除");
+  loadEntries();
 }
 
 
-/* ---------- 7. 編輯資料（儲存修改，含防重複） ---------- */
-function saveEdit(originalCode, newName, newCode) {
+/* ---------- 8. 編輯資料（儲存修改，防重複） ---------- */
+async function saveEdit(id, newName, newCode) {
+  if (!db) return;
   newName = newName.trim();
   newCode = cleanCode(newCode);
-
   if (!newName) { showToast("名字不能空白"); return; }
   if (!newCode) { showToast("匿名亂碼不能空白"); return; }
   if (!newCode.startsWith("[")) newCode = "[" + newCode;
 
-  // 新亂碼若與「其他」資料重複則拒絕（排除自己）
-  if (newCode !== originalCode && entries.some(e => e.code === newCode)) {
-    showToast("此匿名亂碼已存在");
+  const { error } = await db.from("entries").update({ name: newName, code: newCode }).eq("id", id);
+  if (error) {
+    showToast(error.code === "23505" ? "此匿名亂碼已存在" : "更新失敗：" + error.message);
     return;
   }
-
-  const target = entries.find(e => e.code === originalCode);
-  if (target) {
-    target.name = newName;
-    target.code = newCode;
-  }
-  editingCode = null;
-  saveData();
-  renderResults();
+  editingId = null;
   showToast("已更新");
+  loadEntries();
 }
 
 
-/* ---------- 8. 儲存到 localStorage ---------- */
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-}
-
-/* ---------- 9. 從 localStorage 讀取資料 ----------
-   若沒有任何已存資料，就用預設資料初始化（不重複匯入）。 */
-function loadData() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    try {
-      entries = JSON.parse(saved);
-      return;
-    } catch (e) {
-      // 萬一存的東西壞掉，退回預設資料
-    }
-  }
-  entries = parseRawData(RAW_DATA);
-  saveData();
-}
-
-
-/* ---------- 10. 匯出 JSON ----------
-   把目前資料下載成 .json 檔。 */
+/* ---------- 9. 匯出 JSON（只輸出 name 與 code，與匯入格式一致） ---------- */
 function exportJSON() {
-  const text = JSON.stringify(entries, null, 2);
+  const text = JSON.stringify(entries.map(e => ({ name: e.name, code: e.code })), null, 2);
   const blob = new Blob([text], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = "anon-data.json";
-  a.click();
+  a.href = url; a.download = "anon-data.json"; a.click();
   URL.revokeObjectURL(url);
 }
 
 
-/* ---------- 11. 匯入 JSON ----------
-   讀取使用者選的 .json 檔，驗證格式後合併（依亂碼去重複）。 */
+/* ---------- 10. 匯入 JSON（重複的亂碼會自動略過） ---------- */
 function importJSON(file) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
+    if (!db) return;
     try {
       const data = JSON.parse(reader.result);
       if (!Array.isArray(data)) throw new Error("格式錯誤");
 
-      const seen = new Set(entries.map(e => e.code));
-      let added = 0;
-
+      const rows = [];
       data.forEach(item => {
-        // 只接受有 name 與 code 的物件
         if (!item || typeof item.name !== "string" || typeof item.code !== "string") return;
         const name = item.name.trim();
         let code = cleanCode(item.code);
         if (!name || !code) return;
         if (!code.startsWith("[")) code = "[" + code;
-        if (seen.has(code)) return; // 防止重複亂碼
-        seen.add(code);
-        entries.push({ name, code });
-        added++;
+        rows.push({ name, code });
       });
 
-      saveData();
-      renderResults();
-      showToast(`匯入完成，新增 ${added} 筆`);
+      // upsert + onConflict:'code' + ignoreDuplicates：重複亂碼直接略過
+      const { error } = await db.from("entries").upsert(rows, { onConflict: "code", ignoreDuplicates: true });
+      if (error) { showToast("匯入失敗：" + error.message); return; }
+      showToast("匯入完成");
+      loadEntries();
     } catch (e) {
       showToast("匯入失敗：JSON 格式錯誤");
     }
@@ -790,90 +736,54 @@ function importJSON(file) {
 }
 
 
-/* ---------- 9(管理). 清除全部 / 重置（皆需確認視窗） ---------- */
+/* ---------- 清除全部 / 重置（皆需確認） ---------- */
 async function clearAll() {
+  if (!db) return;
   if (!(await showConfirm("確定要清除「全部」資料嗎？此動作無法復原。"))) return;
-  entries = [];
-  editingCode = null;
-  saveData();
-  renderResults();
+  const { error } = await db.from("entries").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (error) { showToast("清除失敗：" + error.message); return; }
   showToast("已清除全部資料");
+  loadEntries();
 }
 
 async function resetToDefault() {
+  if (!db) return;
   if (!(await showConfirm("確定要重置成「預設資料」嗎？目前的資料會被覆蓋。"))) return;
-  entries = parseRawData(RAW_DATA);
-  editingCode = null;
-  saveData();
-  renderResults();
+  const del = await db.from("entries").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (del.error) { showToast("重置失敗：" + del.error.message); return; }
+  const { error } = await db.from("entries").upsert(parseRawData(RAW_DATA), { onConflict: "code", ignoreDuplicates: true });
+  if (error) { showToast("重置失敗：" + error.message); return; }
   showToast("已重置成預設資料");
+  loadEntries();
+}
+
+/* 自動匯入預設：雲端是空的、且目前是管理員時，把預設資料寫進雲端 */
+async function seedIfEmpty() {
+  if (!db || !isAdmin) return;
+  const { count, error } = await db.from("entries").select("id", { count: "exact", head: true });
+  if (error || (count && count > 0)) return; // 已經有資料就不重複匯入
+  const res = await db.from("entries").upsert(parseRawData(RAW_DATA), { onConflict: "code", ignoreDuplicates: true });
+  if (!res.error) { showToast("已匯入預設資料"); loadEntries(); }
 }
 
 
-/* ---------- 管理員登入／登出 ----------
-   套用目前的管理員狀態：切換 body 的 class（控制管理功能顯示）、更新按鈕文字、
-   並重畫列表（讓編輯／刪除按鈕跟著出現或消失）。 */
-function applyAdminUI() {
-  document.body.classList.toggle("admin", isAdmin);
-  document.getElementById("adminBtn").textContent = isAdmin ? "管理員登出" : "管理員登入";
-  if (isAdmin) document.getElementById("loginForm").style.display = "none";
-}
-
-/* 點「管理員登入」：已登入就登出；未登入就顯示／隱藏登入表單 */
-function toggleAdmin() {
-  if (isAdmin) {
-    isAdmin = false;
-    editingCode = null;
-    try { sessionStorage.removeItem("anon-admin"); } catch (e) {}
-    applyAdminUI();
-    renderResults();
-    showToast("已登出");
-  } else {
-    const form = document.getElementById("loginForm");
-    form.style.display = form.style.display === "none" ? "grid" : "none";
-  }
-}
-
-/* 按「登入」：帳號與密碼都正確才進入管理模式 */
-function doLogin() {
-  const user = document.getElementById("loginUser").value.trim();
-  const pass = document.getElementById("loginPass").value;
-  if (user !== ADMIN_USER || pass !== ADMIN_PASSWORD) {
-    showToast("帳號或密碼錯誤");
-    return;
-  }
-  isAdmin = true;
-  try { sessionStorage.setItem("anon-admin", "1"); } catch (e) {}
-  document.getElementById("loginUser").value = "";
-  document.getElementById("loginPass").value = "";
-  applyAdminUI();
-  renderResults();
-  showToast("已登入管理員");
-}
-
-
-/* ---------- 小工具：自訂確認對話框（回傳 Promise<boolean>） ----------
-   取代瀏覽器的 confirm()，因為 confirm() 在內嵌預覽中會被擋掉。 */
+/* ---------- 小工具：自訂確認對話框（回傳 Promise<boolean>） ---------- */
 function showConfirm(message) {
   return new Promise(resolve => {
     const overlay = document.getElementById("confirmOverlay");
     document.getElementById("confirmMsg").textContent = message;
     overlay.style.display = "flex";
-
     const ok = document.getElementById("confirmOk");
     const cancel = document.getElementById("confirmCancel");
-
     function close(result) {
       overlay.style.display = "none";
-      ok.onclick = null;
-      cancel.onclick = null;
+      ok.onclick = null; cancel.onclick = null;
       resolve(result);
     }
     ok.onclick = () => close(true);
     cancel.onclick = () => close(false);
   });
 }
-
 
 /* ---------- 小工具：顯示提示訊息 ---------- */
 let toastTimer = null;
@@ -886,10 +796,50 @@ function showToast(msg) {
 }
 
 
-/* ---------- 初始化：綁定事件、載入資料、顯示列表 ---------- */
-function init() {
-  loadData();
-  applyAdminUI(); // 依目前登入狀態決定要不要顯示管理功能
+/* ---------- 管理員：登入 / 登出（使用 Supabase Auth，真正的身分驗證） ---------- */
+function applyAdminUI() {
+  document.body.classList.toggle("admin", isAdmin);
+  document.getElementById("adminBtn").textContent = isAdmin ? "管理員登出" : "管理員登入";
+  if (isAdmin) document.getElementById("loginForm").style.display = "none";
+}
+
+/* 點「管理員登入」：已登入就登出；未登入就顯示／隱藏登入表單 */
+function toggleAdmin() {
+  if (!db) { showToast("尚未設定 Supabase 連線"); return; }
+  if (isAdmin) {
+    db.auth.signOut(); // 之後由 onAuthStateChange 更新畫面
+    showToast("已登出");
+  } else {
+    const form = document.getElementById("loginForm");
+    form.style.display = form.style.display === "none" ? "grid" : "none";
+  }
+}
+
+/* 按「登入」：用 Email + 密碼向 Supabase 驗證 */
+async function doLogin() {
+  if (!db) return;
+  const email = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value;
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  if (error) { showToast("登入失敗：帳號或密碼錯誤"); return; }
+  document.getElementById("loginUser").value = "";
+  document.getElementById("loginPass").value = "";
+  showToast("已登入管理員"); // 畫面切換由 onAuthStateChange 處理
+}
+
+
+/* ---------- 初始化 ---------- */
+async function init() {
+  const listEl = document.getElementById("results");
+
+  // 還沒設定好 Supabase → 顯示提示就好
+  if (!window.supabase || !db) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "尚未設定 Supabase 連線。請編輯 index.html，填入 SUPABASE_URL 與 SUPABASE_ANON_KEY 後再部署。";
+    listEl.appendChild(li);
+    return;
+  }
 
   document.getElementById("searchInput").addEventListener("input", renderResults);
   document.getElementById("addBtn").addEventListener("click", addEntry);
@@ -899,18 +849,34 @@ function init() {
   document.getElementById("adminBtn").addEventListener("click", toggleAdmin);
   document.getElementById("loginSubmit").addEventListener("click", doLogin);
 
-  // 匯入：點按鈕 → 觸發隱藏的檔案選擇器
   const fileInput = document.getElementById("importFile");
   document.getElementById("importBtn").addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", (e) => {
     if (e.target.files[0]) importJSON(e.target.files[0]);
-    e.target.value = ""; // 清掉，讓同一個檔可再次選取
+    e.target.value = "";
   });
 
-  renderResults();
+  applyAdminUI();
+
+  // 監聽登入狀態：登入/登出時自動更新畫面；登入後若雲端是空的就匯入預設
+  db.auth.onAuthStateChange((event, session) => {
+    isAdmin = !!session;
+    applyAdminUI();
+    renderResults();
+    if (isAdmin) seedIfEmpty();
+  });
+
+  await loadEntries();
+
+  // 即時同步：別人（或你）改動資料時自動重新載入。
+  // （需在 Supabase 後台為 entries 開啟 Realtime；沒開也沒關係，重新整理即可看到最新。）
+  db.channel("entries-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "entries" }, () => loadEntries())
+    .subscribe();
 }
 
 init();
+
 </script>
 </body>
 </html>
