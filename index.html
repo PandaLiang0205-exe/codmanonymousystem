@@ -165,24 +165,6 @@
     <button id="addBtn">新增</button>
   </div>
 
-  <!-- ===== 管理功能區塊（僅管理員可見） ===== -->
-  <div class="card admin-only">
-    <h2>管理功能</h2>
-    <div class="btn-row">
-      <button class="secondary" id="exportBtn">匯出 JSON</button>
-      <button class="secondary" id="importBtn">匯入 JSON</button>
-      <button class="ghost" id="resetBtn">重置成預設資料</button>
-    </div>
-    <input id="importFile" type="file" accept="application/json,.json" hidden>
-    <details style="margin-top:12px">
-      <summary>資料格式說明</summary>
-      <p style="color:var(--muted); font-size:0.85rem;">
-        匯入請使用本系統匯出的 JSON 陣列格式：每筆包含 <code>name</code> 與 <code>code</code> 兩個欄位。
-        匿名亂碼會保留開頭的 <code>[</code>，且不會自動補上 <code>]</code>。
-      </p>
-    </details>
-  </div>
-
   <!-- ===== 管理員登入／登出（一般訪客只會看到「管理員登入」） ===== -->
   <div style="text-align:center; padding:8px 0 24px;">
     <button id="adminBtn" class="ghost mini">管理員登入</button>
@@ -222,8 +204,8 @@
    ★ 部署前必填：到 Supabase 後台 Settings → API 複製這兩個值貼上 ★
    anon key 是設計給前端公開使用的，放在這裡是正常且安全的；
    ⚠ 千萬不要把 service_role key 放進來（那把鑰匙會繞過所有權限）。 */
-const SUPABASE_URL = "https://mmthscwbjxejhgrnuidx.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_VZ7m_6_D4bVeCR14LlkT7A_3_lxseJm";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
 
 /* 建立 Supabase 用戶端。若還沒填好設定，db 會是 null，頁面會顯示提示。 */
 let db = null;
@@ -692,61 +674,6 @@ async function saveEdit(id, newName, newCode) {
 }
 
 
-/* ---------- 9. 匯出 JSON（只輸出 name 與 code，與匯入格式一致） ---------- */
-function exportJSON() {
-  const text = JSON.stringify(entries.map(e => ({ name: e.name, code: e.code })), null, 2);
-  const blob = new Blob([text], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "anon-data.json"; a.click();
-  URL.revokeObjectURL(url);
-}
-
-
-/* ---------- 10. 匯入 JSON（重複的亂碼會自動略過） ---------- */
-function importJSON(file) {
-  const reader = new FileReader();
-  reader.onload = async () => {
-    if (!db) return;
-    try {
-      const data = JSON.parse(reader.result);
-      if (!Array.isArray(data)) throw new Error("格式錯誤");
-
-      const rows = [];
-      data.forEach(item => {
-        if (!item || typeof item.name !== "string" || typeof item.code !== "string") return;
-        const name = item.name.trim();
-        let code = cleanCode(item.code);
-        if (!name || !code) return;
-        if (!code.startsWith("[")) code = "[" + code;
-        rows.push({ name, code });
-      });
-
-      // upsert + onConflict:'code' + ignoreDuplicates：重複亂碼直接略過
-      const { error } = await db.from("entries").upsert(rows, { onConflict: "code", ignoreDuplicates: true });
-      if (error) { showToast("匯入失敗：" + error.message); return; }
-      showToast("匯入完成");
-      loadEntries();
-    } catch (e) {
-      showToast("匯入失敗：JSON 格式錯誤");
-    }
-  };
-  reader.readAsText(file);
-}
-
-
-/* ---------- 重置成預設資料（需確認） ---------- */
-async function resetToDefault() {
-  if (!db) return;
-  if (!(await showConfirm("確定要重置成「預設資料」嗎？目前的資料會被覆蓋。"))) return;
-  const del = await db.from("entries").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-  if (del.error) { showToast("重置失敗：" + del.error.message); return; }
-  const { error } = await db.from("entries").upsert(parseRawData(RAW_DATA), { onConflict: "code", ignoreDuplicates: true });
-  if (error) { showToast("重置失敗：" + error.message); return; }
-  showToast("已重置成預設資料");
-  loadEntries();
-}
-
 /* 自動匯入預設：雲端是空的、且目前是管理員時，把預設資料寫進雲端 */
 async function seedIfEmpty() {
   if (!db || !isAdmin) return;
@@ -833,17 +760,8 @@ async function init() {
 
   document.getElementById("searchInput").addEventListener("input", renderResults);
   document.getElementById("addBtn").addEventListener("click", addEntry);
-  document.getElementById("exportBtn").addEventListener("click", exportJSON);
-  document.getElementById("resetBtn").addEventListener("click", resetToDefault);
   document.getElementById("adminBtn").addEventListener("click", toggleAdmin);
   document.getElementById("loginSubmit").addEventListener("click", doLogin);
-
-  const fileInput = document.getElementById("importFile");
-  document.getElementById("importBtn").addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", (e) => {
-    if (e.target.files[0]) importJSON(e.target.files[0]);
-    e.target.value = "";
-  });
 
   applyAdminUI();
 
