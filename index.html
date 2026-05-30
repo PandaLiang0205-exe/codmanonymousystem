@@ -216,6 +216,13 @@
     letter-spacing: -0.01em;
   }
   .result-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .recent-time {
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
   .empty {
     color: var(--muted);
     text-align: center;
@@ -356,6 +363,12 @@
       <input id="addCode" type="text" placeholder="匿名亂碼（開頭的 [ 可不輸入，系統會自動補上）" autocomplete="off">
     </div>
     <button id="addBtn">新增</button>
+  </div>
+
+  <!-- ===== 最近新增（僅管理員可見） ===== -->
+  <div class="card admin-only">
+    <h2>最近新增</h2>
+    <ul class="results" id="recentList"></ul>
   </div>
 
   <!-- ===== 管理員登入／登出（一般訪客只會看到「管理員登入」） ===== -->
@@ -689,11 +702,74 @@ async function loadEntries() {
   if (!db) return;
   const { data, error } = await db
     .from("entries")
-    .select("id,name,code")
+    .select("id,name,code,created_at")
     .order("created_at", { ascending: true });
   if (error) { showToast("讀取失敗：" + error.message); return; }
   entries = data || [];
   renderResults();
+  renderRecent();
+}
+
+/* ---------- 最近新增（管理員可見） ----------
+   從 entries 取 created_at 最新的前 N 筆顯示。
+   未登入時 .admin-only 容器是 display:none，所以畫面不會出現；
+   但函式仍會跑，這沒副作用，且登入瞬間就有資料可看。 */
+function renderRecent() {
+  const listEl = document.getElementById("recentList");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+
+  if (entries.length === 0) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "目前尚無資料";
+    listEl.appendChild(li);
+    return;
+  }
+
+  // 取最新 8 筆。slice 後排序，不污染原陣列。
+  const recent = entries
+    .slice()
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    .slice(0, 8);
+
+  recent.forEach(item => {
+    const li = document.createElement("li");
+
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "result-name";
+    nameDiv.textContent = item.name;
+
+    const codeDiv = document.createElement("div");
+    codeDiv.className = "result-code";
+    codeDiv.textContent = item.code;
+
+    const timeDiv = document.createElement("div");
+    timeDiv.className = "recent-time";
+    timeDiv.textContent = formatRecentTime(item.created_at);
+
+    li.appendChild(nameDiv);
+    li.appendChild(codeDiv);
+    li.appendChild(timeDiv);
+    listEl.appendChild(li);
+  });
+}
+
+/* 把 ISO timestamp 轉成「3 分鐘前 / 2 小時前 / 5 月 31 日」這種人類可讀格式 */
+function formatRecentTime(iso) {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "剛剛";
+  if (min < 60) return `${min} 分鐘前`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} 小時前`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day} 天前`;
+  const d = new Date(iso);
+  return `${d.getMonth() + 1} 月 ${d.getDate()} 日`;
 }
 
 
