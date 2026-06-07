@@ -24,6 +24,8 @@
     --accent-soft: #1a2b25;
     --ghost: #23272d;
     --danger: #ea7468;
+    --warn: #e0b465;
+    --warn-soft: rgba(224,180,101,0.15);
     --radius: 14px;
     --radius-sm: 10px;
     --shadow-sm: 0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 2px rgba(0,0,0,0.4);
@@ -223,6 +225,31 @@
     margin-top: 8px;
     text-transform: uppercase;
   }
+  .pending-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--warn);
+    background: var(--warn-soft);
+    border: 1px solid rgba(224,180,101,0.35);
+    border-radius: 999px;
+    vertical-align: 2px;
+  }
+  /* ---- 模擬模式專用 ---- */
+  .demo-banner {
+    background: var(--warn-soft);
+    border: 1px solid rgba(224,180,101,0.35);
+    color: var(--warn);
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    margin: -4px 0 18px;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    animation: rise 0.5s var(--ease) both;
+  }
   .empty {
     color: var(--muted);
     text-align: center;
@@ -342,6 +369,11 @@
 </head>
 <body>
 <div class="wrap">
+  <!-- 模擬模式提示橫條（只有在網址 #demo 時才顯示） -->
+  <div id="demoBanner" class="demo-banner" style="display:none;">
+    🛠 <strong>模擬登入模式</strong> ─ 你看到的是示範資料,新增/編輯/刪除只會存在這個瀏覽器分頁;重新整理會回到初始示範資料,不會寫進 Supabase。
+  </div>
+
   <header>
     <h1>匿名查詢系統</h1>
     <p>輸入名字或匿名亂碼，即時查詢對應資料。</p>
@@ -362,7 +394,16 @@
       <input id="addName" type="text" placeholder="名字" autocomplete="off">
       <input id="addCode" type="text" placeholder="匿名亂碼（開頭的 [ 可不輸入，系統會自動補上）" autocomplete="off">
     </div>
-    <button id="addBtn">新增</button>
+    <div class="btn-row">
+      <button id="addBtn">新增</button>
+      <button id="addPendingBtn" class="secondary">加入待確認</button>
+    </div>
+  </div>
+
+  <!-- ===== 待確認清單（僅管理員可見） ===== -->
+  <div class="card admin-only">
+    <h2>待確認清單</h2>
+    <ul class="results" id="pendingList"></ul>
   </div>
 
   <!-- ===== 最近新增（僅管理員可見） ===== -->
@@ -420,6 +461,87 @@ try {
     db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch (e) {}
+
+/* ===== 模擬登入模式 =====
+   網址加上 #demo（或點頁面下方「進入模擬登入」）即啟用。
+   會用一個假的 db 物件取代 Supabase，所有 CRUD 都只改瀏覽器分頁內的記憶體陣列；
+   不會打網路、不會碰雲端、重新整理就回到初始示範資料。
+   目的：免 Supabase 設定也能完整體驗管理介面。 */
+const DEMO_MODE = location.hash === "#demo";
+
+function makeMockDb() {
+  const now = Date.now();
+  let rows = [
+    { id: "demo-1", name: "示範:王小明",   code: "[ab12cd]", created_at: new Date(now - 86400000 * 3).toISOString(), pending: false },
+    { id: "demo-2", name: "示範:陳大華",   code: "[ef34gh]", created_at: new Date(now - 86400000 * 1).toISOString(), pending: false },
+    { id: "demo-3", name: "示範:李曉雯",   code: "[ij56kl]", created_at: new Date(now - 3600000 * 8).toISOString(), pending: true  },
+    { id: "demo-4", name: "示範:張小美",   code: "[mn78op]", created_at: new Date(now - 3600000 * 2).toISOString(), pending: false },
+    { id: "demo-5", name: "示範:Brian 黃", code: "[qr90st]", created_at: new Date(now - 60000 * 15).toISOString(),  pending: true  },
+  ];
+  const ok = () => Promise.resolve({ error: null });
+
+  return {
+    from() {
+      return {
+        select() {
+          return {
+            order(col, opts) {
+              const sorted = [...rows].sort((a, b) => {
+                const av = a[col] || "", bv = b[col] || "";
+                return opts && opts.ascending === false
+                  ? String(bv).localeCompare(String(av))
+                  : String(av).localeCompare(String(bv));
+              });
+              return Promise.resolve({ data: sorted, error: null });
+            }
+          };
+        },
+        insert(row) {
+          if (rows.some(r => r.code === row.code)) {
+            return Promise.resolve({ error: { code: "23505", message: "duplicate code" } });
+          }
+          rows.push({
+            id: "demo-" + Math.random().toString(36).slice(2, 10),
+            name: row.name,
+            code: row.code,
+            pending: row.pending === true,
+            created_at: new Date().toISOString()
+          });
+          return ok();
+        },
+        update(patch) {
+          return {
+            eq(col, val) {
+              rows = rows.map(r => r[col] === val ? { ...r, ...patch } : r);
+              return ok();
+            }
+          };
+        },
+        delete() {
+          return {
+            eq(col, val) {
+              rows = rows.filter(r => r[col] !== val);
+              return ok();
+            }
+          };
+        }
+      };
+    },
+    auth: {
+      signOut: () => ok(),
+      signInWithPassword: () => ok(),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
+    },
+    channel() {
+      const ch = { on() { return ch; }, subscribe() { return ch; } };
+      return ch;
+    }
+  };
+}
+
+if (DEMO_MODE) {
+  db = makeMockDb();
+}
 
 /* ---------- 1. 預設資料（兩行一組）----------
    第一次使用、雲端資料庫是空的時候，管理員登入後會自動匯入這份當初始資料。 */
@@ -702,12 +824,52 @@ async function loadEntries() {
   if (!db) return;
   const { data, error } = await db
     .from("entries")
-    .select("id,name,code,created_at")
+    .select("id,name,code,created_at,pending")
     .order("created_at", { ascending: true });
   if (error) { showToast("讀取失敗：" + error.message); return; }
   entries = data || [];
+  renderAll();
+}
+
+/* 三張列表的統一渲染入口（編輯狀態切換、新增、刪除、確認都呼叫它，三張一起同步） */
+function renderAll() {
   renderResults();
+  renderPending();
   renderRecent();
+}
+
+/* 待確認清單：篩出 pending=true 的全部項目（不限筆數），用既有的 buildViewRow / buildEditRow 來建，行為就跟搜尋結果一致 */
+function renderPending() {
+  const listEl = document.getElementById("pendingList");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+
+  const pendingItems = entries.filter(e => e.pending);
+  if (pendingItems.length === 0) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "目前沒有待確認的項目";
+    listEl.appendChild(li);
+    return;
+  }
+
+  // 越新的待確認排越前面
+  pendingItems
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    .forEach(item => {
+      listEl.appendChild(
+        editingId === item.id ? buildEditRow(item) : buildViewRow(item)
+      );
+    });
+}
+
+/* 把一筆從「待確認」轉成「已確認」 */
+async function confirmEntry(id) {
+  if (!db) return;
+  const { error } = await db.from("entries").update({ pending: false }).eq("id", id);
+  if (error) { showToast("確認失敗：" + error.message); return; }
+  showToast("已確認");
+  loadEntries();
 }
 
 /* ---------- 最近新增（管理員可見） ----------
@@ -823,6 +985,12 @@ function buildViewRow(item) {
   const nameEl = document.createElement("div");
   nameEl.className = "result-name";
   nameEl.textContent = item.name;
+  if (item.pending) {
+    const badge = document.createElement("span");
+    badge.className = "pending-badge";
+    badge.textContent = "待確認";
+    nameEl.appendChild(badge);
+  }
 
   const codeEl = document.createElement("div");
   codeEl.className = "result-code";
@@ -836,10 +1004,18 @@ function buildViewRow(item) {
   const actions = document.createElement("div");
   actions.className = "result-actions";
 
+  if (item.pending) {
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = "mini";
+    confirmBtn.textContent = "確認";
+    confirmBtn.onclick = () => confirmEntry(item.id);
+    actions.appendChild(confirmBtn);
+  }
+
   const editBtn = document.createElement("button");
   editBtn.className = "secondary mini";
   editBtn.textContent = "編輯";
-  editBtn.onclick = () => { editingId = item.id; renderResults(); };
+  editBtn.onclick = () => { editingId = item.id; renderAll(); };
 
   const delBtn = document.createElement("button");
   delBtn.className = "danger mini";
@@ -875,7 +1051,7 @@ function buildEditRow(item) {
   const cancelBtn = document.createElement("button");
   cancelBtn.className = "ghost mini";
   cancelBtn.textContent = "取消";
-  cancelBtn.onclick = () => { editingId = null; renderResults(); };
+  cancelBtn.onclick = () => { editingId = null; renderAll(); };
 
   actions.appendChild(saveBtn);
   actions.appendChild(cancelBtn);
@@ -889,7 +1065,7 @@ function buildEditRow(item) {
 
 /* ---------- 6 & 12. 新增資料（防止重複亂碼） ----------
    亂碼的唯一性同時由資料庫的 UNIQUE 約束強制保證，重複時會收到 23505 錯誤。 */
-async function addEntry() {
+async function addEntry(pending = false) {
   if (!db) return;
   const nameEl = document.getElementById("addName");
   const codeEl = document.getElementById("addCode");
@@ -900,13 +1076,13 @@ async function addEntry() {
   if (!code) { showToast("匿名亂碼不能空白"); return; }
   if (!code.startsWith("[")) code = "[" + code; // 沒有 [ 就自動補（不補 ]）
 
-  const { error } = await db.from("entries").insert({ name, code });
+  const { error } = await db.from("entries").insert({ name, code, pending });
   if (error) {
     showToast(error.code === "23505" ? "此匿名亂碼已存在" : "新增失敗：" + error.message);
     return;
   }
   nameEl.value = ""; codeEl.value = "";
-  showToast("新增成功");
+  showToast(pending ? "已加入待確認" : "新增成功");
   loadEntries();
 }
 
@@ -991,6 +1167,12 @@ function applyAdminUI() {
 
 /* 點「管理員登入」：已登入就登出；未登入就顯示／隱藏登入表單 */
 function toggleAdmin() {
+  // demo 模式下「管理員登出」= 離開模擬模式 → 移除 #demo 並重新載入
+  if (DEMO_MODE && isAdmin) {
+    history.replaceState(null, "", location.pathname + location.search);
+    location.reload();
+    return;
+  }
   if (!db) { showToast("尚未設定 Supabase 連線"); return; }
   if (isAdmin) {
     db.auth.signOut(); // 之後由 onAuthStateChange 更新畫面
@@ -1018,8 +1200,14 @@ async function doLogin() {
 async function init() {
   const listEl = document.getElementById("results");
 
-  // 還沒設定好 Supabase → 顯示提示就好
-  if (!window.supabase || !db) {
+  // 模擬模式：顯示橫條 + 直接視為已登入
+  if (DEMO_MODE) {
+    document.getElementById("demoBanner").style.display = "block";
+    isAdmin = true;
+  }
+
+  // 還沒設定好 Supabase 也不在 demo 模式 → 顯示提示就好
+  if (!db) {
     const li = document.createElement("li");
     li.className = "empty";
     li.textContent = "尚未設定 Supabase 連線。請編輯 index.html，填入 SUPABASE_URL 與 SUPABASE_ANON_KEY 後再部署。";
@@ -1028,7 +1216,8 @@ async function init() {
   }
 
   document.getElementById("searchInput").addEventListener("input", renderResults);
-  document.getElementById("addBtn").addEventListener("click", addEntry);
+  document.getElementById("addBtn").addEventListener("click", () => addEntry(false));
+  document.getElementById("addPendingBtn").addEventListener("click", () => addEntry(true));
   document.getElementById("adminBtn").addEventListener("click", toggleAdmin);
   document.getElementById("loginSubmit").addEventListener("click", doLogin);
 
