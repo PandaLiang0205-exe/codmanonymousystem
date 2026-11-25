@@ -3,28 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#050708">
 <title>匿名查詢系統</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
 <style>
-  /* 版面：滿版黃色查詢帶（亂碼開頭的 [ 就是搜尋欄）＋下方安靜的結果表 */
+  /* 版面：全黑查詢帶，括號處一盞暗金微光（亂碼開頭的 [ 就是搜尋欄）＋下方安靜的結果表 */
   :root {
-    --band: #ffcb2e; --band-ink: #17191c;
-    --bg: #f3f4f2; --panel: #ffffff; --ink: #17191c; --muted: #5b6167;
-    --mark: #ffe08a; --mark-ink: #17191c;
-    --danger: #b3261e; --warn: #7a4d00; --solid: #17191c; --on-solid: #ffffff;
+    --band: #050708; --band-ink: #e4e1d6; --glow: #c8a04a;
+    --bg: #0a0d0e; --panel: #12171a; --ink: #d9d7cd; --muted: #8b9294;
+    --accent: #c8a04a; --accent-ink: #0a0d0e; --line: #6d5a2f;
+    --mark: #c8a04a; --mark-ink: #0a0d0e;
+    --danger: #e0776b; --warn: #c8a04a; --solid: #d9d7cd; --on-solid: #0a0d0e;
     --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
     --mono: "Martian Mono", ui-monospace, Consolas, monospace;
     --ease: cubic-bezier(.2,.8,.2,1);
-    color-scheme: light;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #17191c; --panel: #202327; --ink: #f1f2ef; --muted: #a4abb1;
-      --mark: #ffcb2e; --danger: #ff8a7f; --warn: #ffcb2e;
-      --solid: #f1f2ef; --on-solid: #17191c; color-scheme: dark;
-    }
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 400 1rem/1.5 var(--sans); -webkit-text-size-adjust: 100%; }
@@ -32,19 +29,21 @@
   :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
 
   /* 查詢帶 */
-  .band { background: var(--band); color: var(--band-ink); padding: 14px 0 clamp(32px, 6vw, 64px); }
+  .band { position: relative; isolation: isolate; overflow: hidden; background: linear-gradient(var(--band) 60%, var(--bg)); color: var(--band-ink); padding: 14px 0 clamp(32px, 6vw, 64px); }
+  .band::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse 60% 90% at 18% 70%, color-mix(in srgb, var(--glow) 20%, transparent), transparent 75%); -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); opacity: .5; transition: opacity .6s var(--ease); pointer-events: none; }
+  .band:focus-within::before { opacity: 1; }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; }
   .topbar h1 { margin: 0; font-size: 1.125rem; font-weight: 900; }
-  .search-box { display: flex; align-items: center; gap: clamp(8px, 2vw, 20px); margin-top: clamp(32px, 7vw, 80px); font-size: clamp(1.75rem, 6.4vw, 4.5rem); border-bottom: 4px solid var(--band-ink); cursor: text; transition: box-shadow .2s var(--ease); }
-  .search-box:focus-within { box-shadow: 0 4px 0 var(--band-ink); }
+  .search-box { display: flex; align-items: center; gap: clamp(8px, 2vw, 20px); margin-top: clamp(32px, 7vw, 80px); font-size: clamp(1.75rem, 6.4vw, 4.5rem); border-bottom: 4px solid var(--line); cursor: text; transition: border-color .3s var(--ease); }
+  .search-box:focus-within { border-color: var(--accent); }
   .count:empty { padding-bottom: 0; }
-  .bracket { margin-left: -.1em; font: 700 1.25em/1.3 var(--mono); transition: transform .25s var(--ease); }
+  .bracket { color: var(--accent); margin-left: -.1em; font: 700 1.25em/1.3 var(--mono); transition: transform .25s var(--ease); }
   .search-box:focus-within .bracket { transform: translateX(-.05em); }
-  .search-box input { flex: 1; min-width: 0; width: 100%; padding: .25em 0; border: 0; background: none; color: inherit; font: 900 1em/1.3 var(--sans); outline: 0; caret-color: var(--band-ink); appearance: none; }
+  .search-box input { flex: 1; min-width: 0; width: 100%; padding: .25em 0; border: 0; background: none; color: inherit; font: 900 1em/1.3 var(--sans); outline: 0; caret-color: var(--accent); appearance: none; }
   .search-box input::placeholder { color: var(--band-ink); opacity: .64; }
   .search-box input::-webkit-search-cancel-button { display: none; }
 
-  .demo-banner { background: #17191c; color: #fff; padding: 12px 20px; font-size: .9rem; }
+  .demo-banner { background: var(--panel); color: var(--ink); padding: 12px 20px; font-size: .9rem; }
 
   /* 結果 */
   main { padding-bottom: 80px; }
@@ -72,7 +71,7 @@
   .admin-lists .result-name { font-size: 1.0625rem; }
   .admin-lists .result-code { font-size: .875rem; }
   .field input, .edit-fields input { width: 100%; min-height: 48px; padding: 10px 12px; border: 2px solid var(--muted); border-radius: 0; background: var(--bg); color: var(--ink); font: 500 1rem/1.4 var(--sans); }
-  .field input:focus, .edit-fields input:focus { outline: 3px solid var(--band); outline-offset: 0; border-color: var(--ink); }
+  .field input:focus, .edit-fields input:focus { outline: 3px solid var(--accent); outline-offset: 0; border-color: var(--ink); }
   .edit-fields { grid-column: 1 / -1; display: grid; gap: 10px; }
   .field input.code-input, .edit-fields input.code-input { font-family: var(--mono); }
 
@@ -83,19 +82,31 @@
   button.danger { color: var(--danger); }
   button.mini { min-height: 44px; padding: 8px 14px; font-size: .875rem; }
   @media (hover: hover) {
-    button:hover, button.secondary:hover, button.ghost:hover { background: var(--band); border-color: var(--band-ink); color: var(--band-ink); }
+    button:hover, button.secondary:hover, button.ghost:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
     button.danger:hover { background: var(--danger); border-color: var(--danger); color: var(--bg); }
   }
   .btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
-  #adminBtn { color: var(--band-ink); border-color: var(--band-ink); background: transparent; }
-  #adminBtn:hover { background: var(--band-ink); color: var(--band); }
+  #adminBtn { color: var(--band-ink); border-color: var(--line); background: transparent; }
+  #adminBtn:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .login-form { grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; padding-top: 18px; animation: drop .25s var(--ease); }
-  .login-form .field input { background: #fff; color: #17191c; border-color: #17191c; }
-  .login-form .field input:focus { outline-color: #17191c; }
-  .login-form #loginSubmit { background: #17191c; color: #fff; border-color: #17191c; }
+
+  /* 圖示：Phosphor Icons（MIT），以 mask 上色，跟隨文字顏色 */
+  [data-icon]::before { content: ""; display: inline-block; flex: none; width: 1.15em; height: 1.15em; margin-right: .45em; vertical-align: -.2em; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+  .search-icon::before { width: .7em; height: .7em; margin: 0; color: var(--accent); vertical-align: middle; }
+  .search-icon { line-height: 1; }
+  [data-icon="search"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z'/%3E%3C/svg%3E"); }
+  [data-icon="lock"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,76H180V56A52,52,0,0,0,76,56V76H48A20,20,0,0,0,28,96V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V96A20,20,0,0,0,208,76ZM100,56a28,28,0,0,1,56,0V76H100ZM204,204H52V100H204Zm-76-92a32,32,0,0,0-12,61.66V180a12,12,0,0,0,24,0v-6.34A32,32,0,0,0,128,112Zm0,24a8,8,0,1,1-8,8A8,8,0,0,1,128,136Z'/%3E%3C/svg%3E"); }
+  body.admin #adminBtn { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M124,216a12,12,0,0,1-12,12H48a12,12,0,0,1-12-12V40A12,12,0,0,1,48,28h64a12,12,0,0,1,0,24H60V204h52A12,12,0,0,1,124,216Zm108.49-96.49-40-40a12,12,0,0,0-17,17L195,116H112a12,12,0,0,0,0,24h83l-19.52,19.51a12,12,0,0,0,17,17l40-40A12,12,0,0,0,232.49,119.51Z'/%3E%3C/svg%3E"); }
+  [data-icon="enter"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M144.49,136.49l-40,40a12,12,0,0,1-17-17L107,140H24a12,12,0,0,1,0-24h83L87.51,96.49a12,12,0,0,1,17-17l40,40A12,12,0,0,1,144.49,136.49ZM200,28H136a12,12,0,0,0,0,24h52V204H136a12,12,0,0,0,0,24h64a12,12,0,0,0,12-12V40A12,12,0,0,0,200,28Z'/%3E%3C/svg%3E"); }
+  [data-icon="plus"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M228,128a12,12,0,0,1-12,12H140v76a12,12,0,0,1-24,0V140H40a12,12,0,0,1,0-24h76V40a12,12,0,0,1,24,0v76h76A12,12,0,0,1,228,128Z'/%3E%3C/svg%3E"); }
+  [data-icon="clock"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm68-84a12,12,0,0,1-12,12H128a12,12,0,0,1-12-12V72a12,12,0,0,1,24,0v44h44A12,12,0,0,1,196,128Z'/%3E%3C/svg%3E"); }
+  [data-icon="check"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z'/%3E%3C/svg%3E"); }
+  [data-icon="edit"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M230.14,70.54,185.46,25.85a20,20,0,0,0-28.29,0L33.86,149.17A19.85,19.85,0,0,0,28,163.31V208a20,20,0,0,0,20,20H92.69a19.86,19.86,0,0,0,14.14-5.86L230.14,98.82a20,20,0,0,0,0-28.28ZM91,204H52V165l84-84,39,39ZM192,103,153,64l18.34-18.34,39,39Z'/%3E%3C/svg%3E"); }
+  [data-icon="trash"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M216,48H180V36A28,28,0,0,0,152,8H104A28,28,0,0,0,76,36V48H40a12,12,0,0,0,0,24h4V208a20,20,0,0,0,20,20H192a20,20,0,0,0,20-20V72h4a12,12,0,0,0,0-24ZM100,36a4,4,0,0,1,4-4h48a4,4,0,0,1,4,4V48H100Zm88,168H68V72H188ZM116,104v64a12,12,0,0,1-24,0V104a12,12,0,0,1,24,0Zm48,0v64a12,12,0,0,1-24,0V104a12,12,0,0,1,24,0Z'/%3E%3C/svg%3E"); }
+  [data-icon="x"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z'/%3E%3C/svg%3E"); }
 
   /* 確認框與提示 */
-  .overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgb(10 11 13 / .7); }
+  .overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgb(0 0 0 / .8); }
   .modal { width: 100%; max-width: 400px; padding: 28px; background: var(--panel); animation: drop .25s var(--ease); }
   .modal p { margin: 0 0 24px; font-size: 1.125rem; font-weight: 700; }
   #toast { position: fixed; z-index: 70; left: 50%; bottom: 24px; max-width: 90vw; padding: 14px 22px; background: var(--solid); color: var(--on-solid); font-weight: 700; opacity: 0; transform: translate(-50%, 20px); pointer-events: none; transition: transform .25s var(--ease), opacity .2s; }
@@ -123,16 +134,17 @@
   <div class="wrap">
     <div class="topbar">
       <h1>匿名查詢系統</h1>
-      <button id="adminBtn" class="ghost mini" type="button">管理員登入</button>
+      <button id="adminBtn" data-icon="lock" class="ghost mini" type="button">管理員登入</button>
     </div>
     <form id="loginForm" class="login-form" style="display:none;">
       <label class="field">帳號（Email）<input id="loginUser" type="text" inputmode="email" autocomplete="off"></label>
       <label class="field">密碼<input id="loginPass" type="password" autocomplete="off"></label>
-      <button id="loginSubmit" type="submit">登入</button>
+      <button id="loginSubmit" data-icon="enter" type="submit">登入</button>
     </form>
     <label class="search-box">
       <span class="bracket" aria-hidden="true">[</span>
       <input id="searchInput" type="search" aria-label="輸入名字或匿名亂碼" placeholder="名字或匿名亂碼" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <span class="search-icon" data-icon="search" aria-hidden="true"></span>
     </label>
   </div>
 </header>
@@ -150,8 +162,8 @@
         <label class="field">匿名亂碼（開頭的 [ 可不輸入）<input id="addCode" class="code-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
       </div>
       <div class="btn-row">
-        <button id="addBtn" type="button">新增</button>
-        <button id="addPendingBtn" class="secondary" type="button">加入待確認</button>
+        <button id="addBtn" data-icon="plus" type="button">新增</button>
+        <button id="addPendingBtn" data-icon="clock" class="secondary" type="button">加入待確認</button>
       </div>
     </section>
     <div class="admin-lists">
@@ -166,8 +178,8 @@
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
     <p id="confirmMsg"></p>
     <div class="btn-row" style="justify-content:flex-end;">
-      <button id="confirmCancel" class="ghost mini" type="button">取消</button>
-      <button id="confirmOk" class="danger mini" type="button">確定</button>
+      <button id="confirmCancel" data-icon="x" class="ghost mini" type="button">取消</button>
+      <button id="confirmOk" data-icon="check" class="danger mini" type="button">確定</button>
     </div>
   </div>
 </div>
@@ -788,19 +800,19 @@ function buildViewRow(item) {
   actions.className = "result-actions";
 
   if (item.pending) {
-    const confirmBtn = document.createElement("button");
+    const confirmBtn = document.createElement("button"); confirmBtn.dataset.icon = "check";
     confirmBtn.className = "mini";
     confirmBtn.textContent = "確認";
     confirmBtn.onclick = () => confirmEntry(item.id);
     actions.appendChild(confirmBtn);
   }
 
-  const editBtn = document.createElement("button");
+  const editBtn = document.createElement("button"); editBtn.dataset.icon = "edit";
   editBtn.className = "secondary mini";
   editBtn.textContent = "編輯";
   editBtn.onclick = () => { editingId = item.id; renderAll(); };
 
-  const delBtn = document.createElement("button");
+  const delBtn = document.createElement("button"); delBtn.dataset.icon = "trash";
   delBtn.className = "danger mini";
   delBtn.textContent = "刪除";
   delBtn.onclick = () => deleteEntry(item.id);
@@ -826,12 +838,12 @@ function buildEditRow(item) {
   const actions = document.createElement("div");
   actions.className = "result-actions";
 
-  const saveBtn = document.createElement("button");
+  const saveBtn = document.createElement("button"); saveBtn.dataset.icon = "check";
   saveBtn.className = "mini";
   saveBtn.textContent = "儲存";
   saveBtn.onclick = () => saveEdit(item.id, nameInput.value, codeInput.value);
 
-  const cancelBtn = document.createElement("button");
+  const cancelBtn = document.createElement("button"); cancelBtn.dataset.icon = "x";
   cancelBtn.className = "ghost mini";
   cancelBtn.textContent = "取消";
   cancelBtn.onclick = () => { editingId = null; renderAll(); };
