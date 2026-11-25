@@ -8,13 +8,19 @@
 --    id：每筆資料的唯一編號（自動產生）
 --    name：名字
 --    code：匿名亂碼（設為 UNIQUE，資料庫會自動擋掉重複的亂碼）
+--    pending：是否為待確認（true = 待確認）
 --    created_at：建立時間（用來排序）
 create table if not exists public.entries (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
   code        text not null unique,
+  pending     boolean not null default false,
   created_at  timestamptz not null default now()
 );
+
+-- 舊版資料表若還沒有 pending 欄位，補上（已有則略過）
+alter table public.entries
+  add column if not exists pending boolean not null default false;
 
 -- 2) 開啟 Row Level Security（沒開啟的話，下面的權限規則不會生效）
 alter table public.entries enable row level security;
