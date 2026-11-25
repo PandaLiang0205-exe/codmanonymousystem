@@ -4,9 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#050708">
+<meta name="description" content="輸入名字或匿名亂碼，立即查出對應的人。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="匿名查詢系統">
+<meta property="og:description" content="輸入名字或匿名亂碼，立即查出對應的人。">
+<meta property="og:url" content="https://pandaliang0205-exe.github.io/codmanonymousystem/">
+<meta property="og:image" content="https://pandaliang0205-exe.github.io/codmanonymousystem/apple-touch-icon.png">
+<meta name="twitter:card" content="summary">
 <title>匿名查詢系統</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://mmthscwbjxejhgrnuidx.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
@@ -76,9 +84,12 @@
 
   /* 按鈕 */
   button { min-height: 48px; padding: 10px 20px; border: 2px solid var(--solid); border-radius: 0; background: var(--solid); color: var(--on-solid); font: 700 1rem/1.3 var(--sans); cursor: pointer; transition: transform .15s var(--ease), background-color .15s, color .15s; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .retry { display: block; margin-top: 12px; }
   button:active { transform: translateY(2px); }
   button.secondary, button.ghost, button.danger { background: transparent; color: var(--ink); border-color: currentColor; }
   button.danger { color: var(--danger); }
+  button[data-icon="copy"] { border-color: var(--line); color: var(--muted); }
   button.mini { min-height: 44px; padding: 8px 14px; font-size: .875rem; }
   @media (hover: hover) {
     button:hover, button.secondary:hover, button.ghost:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
@@ -91,8 +102,9 @@
 
   /* 圖示：Phosphor Icons（MIT），以 mask 上色，跟隨文字顏色 */
   [data-icon]::before { content: ""; display: inline-block; flex: none; width: 1.15em; height: 1.15em; margin-right: .45em; vertical-align: -.2em; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
-  .search-icon::before { width: .7em; height: .7em; margin: 0; color: var(--accent); vertical-align: middle; }
-  .search-icon { line-height: 1; }
+  .search-icon[data-icon]::before { width: .7em; height: .7em; margin: 0; vertical-align: middle; }
+  button.search-icon, button.search-icon:hover { flex: none; display: grid; place-items: center; min-width: 48px; padding: 0; border: 0; background: none; color: var(--accent); font-size: inherit; line-height: 1; }
+  [data-icon="copy"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z'/%3E%3C/svg%3E"); }
   [data-icon="search"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z'/%3E%3C/svg%3E"); }
   [data-icon="lock"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,76H180V56A52,52,0,0,0,76,56V76H48A20,20,0,0,0,28,96V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V96A20,20,0,0,0,208,76ZM100,56a28,28,0,0,1,56,0V76H100ZM204,204H52V100H204Zm-76-92a32,32,0,0,0-12,61.66V180a12,12,0,0,0,24,0v-6.34A32,32,0,0,0,128,112Zm0,24a8,8,0,1,1-8,8A8,8,0,0,1,128,136Z'/%3E%3C/svg%3E"); }
   body.admin #adminBtn { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M124,216a12,12,0,0,1-12,12H48a12,12,0,0,1-12-12V40A12,12,0,0,1,48,28h64a12,12,0,0,1,0,24H60V204h52A12,12,0,0,1,124,216Zm108.49-96.49-40-40a12,12,0,0,0-17,17L195,116H112a12,12,0,0,0,0,24h83l-19.52,19.51a12,12,0,0,0,17,17l40-40A12,12,0,0,0,232.49,119.51Z'/%3E%3C/svg%3E"); }
@@ -105,9 +117,9 @@
   [data-icon="x"] { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z'/%3E%3C/svg%3E"); }
 
   /* 確認框與提示 */
-  .overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgb(0 0 0 / .8); }
-  .modal { width: 100%; max-width: 400px; padding: 28px; background: var(--panel); animation: drop .25s var(--ease); }
-  .modal p { margin: 0 0 24px; font-size: 1.125rem; font-weight: 700; }
+  .modal::backdrop { background: rgb(0 0 0 / .8); }
+  .modal { width: calc(100% - 40px); max-width: 400px; padding: 28px; border: 0; background: var(--panel); color: var(--ink); animation: drop .25s var(--ease); }
+  .modal p { margin: 0 0 24px; overflow-wrap: anywhere; font-size: 1.125rem; font-weight: 700; }
   #toast { position: fixed; z-index: 70; left: 50%; bottom: 24px; max-width: 90vw; padding: 14px 22px; background: var(--solid); color: var(--on-solid); font-weight: 700; opacity: 0; transform: translate(-50%, 20px); pointer-events: none; transition: transform .25s var(--ease), opacity .2s; }
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
   @keyframes drop { from { transform: translateY(-14px); } }
@@ -117,6 +129,8 @@
     .add-fields, .admin-lists, .login-form { grid-template-columns: 1fr; }
     ul.results li, .admin-lists ul.results li { grid-template-columns: minmax(0, 1fr); gap: 2px; padding-block: 10px; }
     .result-actions { justify-content: flex-start; padding-top: 8px; }
+    ul.results li.visitor-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .visitor-row .result-actions { grid-area: 1 / 2 / 3 / 3; align-self: center; padding: 0; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -134,17 +148,17 @@
   <div class="wrap">
     <div class="topbar">
       <h1><img src="favicon.svg" alt="" width="40" height="40">匿名查詢系統</h1>
-      <button id="adminBtn" data-icon="lock" class="ghost mini" type="button">管理員登入</button>
+      <button id="adminBtn" data-icon="lock" class="ghost mini" type="button" aria-expanded="false" aria-controls="loginForm">管理員登入</button>
     </div>
     <form id="loginForm" class="login-form" style="display:none;">
-      <label class="field">帳號（Email）<input id="loginUser" type="text" inputmode="email" autocomplete="off"></label>
-      <label class="field">密碼<input id="loginPass" type="password" autocomplete="off"></label>
+      <label class="field">帳號（Email）<input id="loginUser" type="email" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+      <label class="field">密碼<input id="loginPass" type="password" autocomplete="current-password" required></label>
       <button id="loginSubmit" data-icon="enter" type="submit">登入</button>
     </form>
     <label class="search-box">
       <span class="bracket" aria-hidden="true">[</span>
-      <input id="searchInput" type="search" aria-label="輸入名字或匿名亂碼" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <span class="search-icon" data-icon="search" aria-hidden="true"></span>
+      <input id="searchInput" type="search" aria-label="輸入名字或匿名亂碼" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+      <button id="searchIcon" class="search-icon" data-icon="search" type="button" aria-label="搜尋"></button>
     </label>
   </div>
 </header>
@@ -155,17 +169,17 @@
 
   <!-- ===== 管理區（僅管理員可見） ===== -->
   <div class="admin-only admin-area">
-    <section class="add-panel">
+    <form id="addForm" class="add-panel">
       <h2>新增資料</h2>
       <div class="add-fields">
         <label class="field">名字<input id="addName" type="text" autocomplete="off"></label>
         <label class="field">匿名亂碼（開頭的 [ 可不輸入）<input id="addCode" class="code-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
       </div>
       <div class="btn-row">
-        <button id="addBtn" data-icon="plus" type="button">新增</button>
+        <button id="addBtn" data-icon="plus" type="submit">新增</button>
         <button id="addPendingBtn" data-icon="clock" class="secondary" type="button">加入待確認</button>
       </div>
-    </section>
+    </form>
     <div class="admin-lists">
       <section><h2>待確認清單</h2><ul class="results" id="pendingList"></ul></section>
       <section><h2>最近新增</h2><ul class="results" id="recentList"></ul></section>
@@ -174,21 +188,19 @@
 </main>
 
 <!-- ===== 自訂確認對話框（取代會被預覽擋掉的 confirm()） ===== -->
-<div id="confirmOverlay" class="overlay" style="display:none;">
-  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
+<dialog id="confirmOverlay" class="modal" role="alertdialog" aria-labelledby="confirmMsg">
     <p id="confirmMsg"></p>
     <div class="btn-row" style="justify-content:flex-end;">
       <button id="confirmCancel" data-icon="x" class="ghost mini" type="button">取消</button>
       <button id="confirmOk" data-icon="check" class="danger mini" type="button">確定</button>
     </div>
-  </div>
-</div>
+</dialog>
 
 <div id="toast" role="status"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" integrity="sha384-HOvlOYPIs/zjoIkWUGXkVmXsjr8GuZLV+Q+rcPwmJOVZVpvTSXQChiN4t9Euv9Vc" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js" integrity="sha384-QsPhgdP78a1erQNT34dj/oyh7uPCXUnT/FkptUa/56LnSGsbTBmdiAOfB7j+8K4A" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ" crossorigin="anonymous"></script>
 
 <script>
 /* =========================================================================
@@ -548,6 +560,26 @@ let editingId = null;
 let isAdmin = false;
 /* 資料是否已讀取完成 */
 let loaded = false;
+/* 第一次讀取是否失敗（顯示重試按鈕） */
+let loadFailed = false;
+/* 編輯中尚未儲存的內容：畫面因即時同步重繪時不會遺失 */
+let draft = null;
+function stopEditing() { editingId = null; draft = null; }
+
+/* 搜尋比對用：全形轉半形、忽略大小寫 */
+function norm(text) { return text.normalize("NFKC").toLowerCase(); }
+/* 把外形容易看錯的字元視為相同（l I 1、O 0 D、S 5、B 8、Z 2、e c） */
+function lookalike(text) {
+  return norm(text).replace(/[li|]/g, "1").replace(/[odq]/g, "0").replace(/s/g, "5")
+    .replace(/b/g, "8").replace(/z/g, "2").replace(/e/g, "c");
+}
+/* 排序：完全相同 → 開頭相同 → 只是包含 */
+function matchRank(item, query) {
+  const q = query.replace(/^\[/, "");
+  const fields = [norm(item.name), norm(item.code).replace(/^\[/, "")];
+  if (fields.includes(q)) return 0;
+  return fields.some(f => f.startsWith(q)) ? 1 : 2;
+}
 /* 上一次顯示的結果 id：只有新出現的列才播放解碼動畫 */
 let shownIds = new Set();
 const canDecode = !!(window.gsap && window.ScrambleTextPlugin);
@@ -555,7 +587,7 @@ if (canDecode) gsap.registerPlugin(ScrambleTextPlugin);
 
 /* 把符合查詢的文字標出來（只用 DOM 節點，不用 innerHTML） */
 function setHighlighted(el, text, query) {
-  const lower = text.toLowerCase();
+  const lower = norm(text);
   const i = query && lower.length === text.length ? lower.indexOf(query) : -1;
   if (i < 0) { el.replaceChildren(text); return; }
   const m = document.createElement("mark");
@@ -603,7 +635,13 @@ async function loadEntries() {
     .from("entries")
     .select("id,name,code,created_at,pending")
     .order("created_at", { ascending: true });
-  if (error) { showToast("讀取失敗：" + error.message); return; }
+  if (error) {
+    showToast("讀取失敗：" + error.message);
+    loadFailed = !loaded; // 已有資料時保留舊資料，不清空畫面
+    renderResults();
+    return;
+  }
+  loadFailed = false;
   entries = data || [];
   loaded = true;
   renderAll();
@@ -717,11 +755,29 @@ function formatRecentTime(iso) {
    名字或亂碼只要「包含」輸入文字即算符合（不分大小寫）；
    搜尋欄空白時不列出全部，只顯示提示。 */
 function renderResults() {
-  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  const query = norm(document.getElementById("searchInput").value.trim());
+  const iconEl = document.getElementById("searchIcon");
+  iconEl.dataset.icon = query ? "x" : "search";
+  iconEl.setAttribute("aria-label", query ? "清除搜尋" : "搜尋");
   const listEl = document.getElementById("results");
   const countEl = document.getElementById("count");
 
   listEl.innerHTML = ""; // 清空我們自己產生的節點（安全）
+
+  if (loadFailed) {
+    countEl.textContent = "";
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "資料讀取失敗，請檢查網路";
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "mini retry";
+    retry.textContent = "重新讀取";
+    retry.onclick = () => { retry.disabled = true; loadEntries(); };
+    li.appendChild(retry);
+    listEl.appendChild(li);
+    return;
+  }
 
   if (query === "") {
     countEl.textContent = "";
@@ -733,10 +789,14 @@ function renderResults() {
     return;
   }
 
-  const matched = entries.filter(item =>
-    item.name.toLowerCase().includes(query) ||
-    item.code.toLowerCase().includes(query)
-  );
+  const exact = entries
+    .filter(item => norm(item.name).includes(query) || norm(item.code).includes(query))
+    .sort((a, b) => matchRank(a, query) - matchRank(b, query));
+  // 輸入 4 個字以上時，另外列出亂碼外形相近的資料
+  const folded = lookalike(query);
+  const similar = folded.replace(/^\[/, "").length < 4 ? [] :
+    entries.filter(item => !exact.includes(item) && lookalike(item.code).includes(folded));
+  const matched = exact.concat(similar);
 
   if (!loaded) {
     countEl.textContent = "資料載入中";
@@ -753,7 +813,7 @@ function renderResults() {
     return;
   }
 
-  countEl.textContent = `共 ${matched.length} 筆結果`;
+  countEl.textContent = similar.length ? `共 ${exact.length} 筆結果，另有 ${similar.length} 筆亂碼外形相近` : `共 ${exact.length} 筆結果`;
 
   // 全程用 textContent / DOM 建立，不使用 innerHTML 插入使用者輸入，避免 XSS
   let fresh = 0;
@@ -765,6 +825,12 @@ function renderResults() {
     const nameText = li.querySelector(".name-text");
     setHighlighted(nameText, item.name, query);
     setHighlighted(li.querySelector(".result-code"), item.code, query);
+    if (similar.includes(item)) {
+      const badge = document.createElement("span");
+      badge.className = "pending-badge";
+      badge.textContent = "外形相近";
+      li.querySelector(".result-name").appendChild(badge);
+    }
     if (!shownIds.has(item.id) && fresh < 8) decodeName(nameText, item, query, fresh++ * 0.04);
   });
   shownIds = new Set(matched.map(item => item.id));
@@ -794,23 +860,39 @@ function buildViewRow(item) {
   li.appendChild(nameEl);
   li.appendChild(codeEl);
 
-  if (!isAdmin) return li;
-
   const actions = document.createElement("div");
   actions.className = "result-actions";
+  const copyBtn = document.createElement("button"); copyBtn.dataset.icon = "copy";
+  copyBtn.type = "button";
+  copyBtn.className = "ghost mini";
+  copyBtn.textContent = "複製";
+  copyBtn.setAttribute("aria-label", `複製 ${item.name} 的亂碼`);
+  copyBtn.onclick = () => copyCode(item.code);
+  li.appendChild(actions);
+
+  if (!isAdmin) {
+    li.className = "visitor-row";
+    actions.appendChild(copyBtn);
+    return li;
+  }
 
   if (item.pending) {
     const confirmBtn = document.createElement("button"); confirmBtn.dataset.icon = "check";
     confirmBtn.className = "mini";
     confirmBtn.textContent = "確認";
-    confirmBtn.onclick = () => confirmEntry(item.id);
+    confirmBtn.onclick = () => withBusy([confirmBtn], () => confirmEntry(item.id));
     actions.appendChild(confirmBtn);
   }
 
   const editBtn = document.createElement("button"); editBtn.dataset.icon = "edit";
   editBtn.className = "secondary mini";
   editBtn.textContent = "編輯";
-  editBtn.onclick = () => { editingId = item.id; renderAll(); };
+  editBtn.onclick = () => {
+    const list = li.parentElement;
+    editingId = item.id; draft = { name: item.name, code: item.code };
+    renderAll();
+    list.querySelector(".edit-fields input")?.focus();
+  };
 
   const delBtn = document.createElement("button"); delBtn.dataset.icon = "trash";
   delBtn.className = "danger mini";
@@ -818,8 +900,8 @@ function buildViewRow(item) {
   delBtn.onclick = () => deleteEntry(item.id);
 
   actions.appendChild(editBtn);
+  actions.appendChild(copyBtn);
   actions.appendChild(delBtn);
-  li.appendChild(actions);
   return li;
 }
 
@@ -830,10 +912,17 @@ function buildEditRow(item) {
   box.className = "edit-fields";
 
   const nameInput = document.createElement("input");
-  nameInput.type = "text"; nameInput.value = item.name; nameInput.placeholder = "名字";
+  nameInput.type = "text"; nameInput.value = draft.name; nameInput.ariaLabel = "名字"; nameInput.placeholder = "名字";
 
   const codeInput = document.createElement("input");
-  codeInput.type = "text"; codeInput.value = item.code; codeInput.placeholder = "匿名亂碼"; codeInput.className = "code-input";
+  codeInput.type = "text"; codeInput.value = draft.code; codeInput.ariaLabel = "匿名亂碼"; codeInput.placeholder = "匿名亂碼"; codeInput.className = "code-input";
+  nameInput.oninput = () => { draft.name = nameInput.value; };
+  codeInput.oninput = () => { draft.code = codeInput.value; };
+  box.onkeydown = e => {
+    if (e.isComposing || e.target.tagName !== "INPUT") return; // 中文選字中的 Enter 不算送出
+    if (e.key === "Enter") saveBtn.click();
+    if (e.key === "Escape") cancelBtn.click();
+  };
 
   const actions = document.createElement("div");
   actions.className = "result-actions";
@@ -841,12 +930,12 @@ function buildEditRow(item) {
   const saveBtn = document.createElement("button"); saveBtn.dataset.icon = "check";
   saveBtn.className = "mini";
   saveBtn.textContent = "儲存";
-  saveBtn.onclick = () => saveEdit(item.id, nameInput.value, codeInput.value);
+  saveBtn.onclick = () => withBusy([saveBtn], () => saveEdit(item.id, nameInput.value, codeInput.value));
 
   const cancelBtn = document.createElement("button"); cancelBtn.dataset.icon = "x";
   cancelBtn.className = "ghost mini";
   cancelBtn.textContent = "取消";
-  cancelBtn.onclick = () => { editingId = null; renderAll(); };
+  cancelBtn.onclick = () => { stopEditing(); renderAll(); };
 
   actions.appendChild(saveBtn);
   actions.appendChild(cancelBtn);
@@ -877,6 +966,7 @@ async function addEntry(pending = false) {
     return;
   }
   nameEl.value = ""; codeEl.value = "";
+  nameEl.focus();
   showToast(pending ? "已加入待確認" : "新增成功");
   loadEntries();
 }
@@ -885,10 +975,10 @@ async function addEntry(pending = false) {
 /* ---------- 7. 刪除資料（單筆，含自訂確認框） ---------- */
 async function deleteEntry(id) {
   if (!db) return;
-  if (!(await showConfirm("確定要刪除這筆資料嗎？"))) return;
+  if (!(await showConfirm(`確定要刪除「${entries.find(e => e.id === id)?.name ?? "這筆資料"}」嗎？`))) return;
   const { error } = await db.from("entries").delete().eq("id", id);
   if (error) { showToast("刪除失敗：" + error.message); return; }
-  if (editingId === id) editingId = null;
+  if (editingId === id) stopEditing();
   showToast("已刪除");
   loadEntries();
 }
@@ -908,7 +998,7 @@ async function saveEdit(id, newName, newCode) {
     showToast(error.code === "23505" ? "此匿名亂碼已存在" : "更新失敗：" + error.message);
     return;
   }
-  editingId = null;
+  stopEditing();
   showToast("已更新");
   loadEntries();
 }
@@ -918,7 +1008,7 @@ async function saveEdit(id, newName, newCode) {
 async function seedIfEmpty() {
   if (!db || !isAdmin) return;
   const { count, error } = await db.from("entries").select("id", { count: "exact", head: true });
-  if (error || (count && count > 0)) return; // 已經有資料就不重複匯入
+  if (error || count !== 0) return; // 已經有資料就不重複匯入
   const res = await db.from("entries").upsert(parseRawData(RAW_DATA), { onConflict: "code", ignoreDuplicates: true });
   if (!res.error) { showToast("已匯入預設資料"); loadEntries(); }
 }
@@ -927,19 +1017,39 @@ async function seedIfEmpty() {
 /* ---------- 小工具：自訂確認對話框（回傳 Promise<boolean>） ---------- */
 function showConfirm(message) {
   return new Promise(resolve => {
-    const overlay = document.getElementById("confirmOverlay");
+    const dialog = document.getElementById("confirmOverlay");
     document.getElementById("confirmMsg").textContent = message;
-    overlay.style.display = "flex";
-    const ok = document.getElementById("confirmOk");
-    const cancel = document.getElementById("confirmCancel");
-    function close(result) {
-      overlay.style.display = "none";
-      ok.onclick = null; cancel.onclick = null;
-      resolve(result);
-    }
-    ok.onclick = () => close(true);
-    cancel.onclick = () => close(false);
+    dialog.returnValue = "";
+    document.getElementById("confirmOk").onclick = () => dialog.close("ok");
+    document.getElementById("confirmCancel").onclick = () => dialog.close();
+    dialog.onclick = e => {
+      if (e.target !== dialog) return; // 只有點在框外才關閉
+      const b = dialog.getBoundingClientRect();
+      if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) dialog.close();
+    };
+    dialog.onclose = () => resolve(dialog.returnValue === "ok"); // Esc 也會觸發，視為取消
+    dialog.showModal();
+    document.getElementById("confirmCancel").focus();
   });
+}
+
+/* ---------- 小工具：執行期間停用按鈕，避免連點重複送出 ---------- */
+async function withBusy(buttons, task) {
+  if (buttons.some(b => b.disabled)) return;
+  buttons.forEach(b => { b.disabled = true; });
+  try { await task(); }
+  catch (e) { showToast("連線失敗，請稍後再試"); }
+  finally { buttons.forEach(b => { b.disabled = false; }); }
+}
+
+/* ---------- 小工具：複製亂碼 ---------- */
+async function copyCode(code) {
+  try {
+    await navigator.clipboard.writeText(code);
+    showToast("已複製 " + code);
+  } catch (e) {
+    showToast("無法複製，請長按亂碼選取");
+  }
 }
 
 /* ---------- 小工具：顯示提示訊息 ---------- */
@@ -949,7 +1059,7 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+  toastTimer = setTimeout(() => t.classList.remove("show"), Math.max(2000, msg.length * 160));
 }
 
 
@@ -957,7 +1067,12 @@ function showToast(msg) {
 function applyAdminUI() {
   document.body.classList.toggle("admin", isAdmin);
   document.getElementById("adminBtn").textContent = isAdmin ? "管理員登出" : "管理員登入";
-  if (isAdmin) document.getElementById("loginForm").style.display = "none";
+  if (isAdmin) {
+    document.getElementById("loginForm").style.display = "none";
+    document.getElementById("adminBtn").setAttribute("aria-expanded", "false");
+  } else {
+    stopEditing();
+  }
 }
 
 /* 點「管理員登入」：已登入就登出；未登入就顯示／隱藏登入表單 */
@@ -970,11 +1085,14 @@ function toggleAdmin() {
   }
   if (!db) { showToast("尚未設定 Supabase 連線"); return; }
   if (isAdmin) {
-    db.auth.signOut(); // 之後由 onAuthStateChange 更新畫面
-    showToast("已登出");
+    // 成功後由 onAuthStateChange 更新畫面
+    db.auth.signOut().then(({ error }) => showToast(error ? "登出失敗：" + error.message : "已登出"));
   } else {
     const form = document.getElementById("loginForm");
-    form.style.display = form.style.display === "none" ? "grid" : "none";
+    const open = form.style.display === "none";
+    form.style.display = open ? "grid" : "none";
+    document.getElementById("adminBtn").setAttribute("aria-expanded", String(open));
+    if (open) document.getElementById("loginUser").focus();
   }
 }
 
@@ -984,7 +1102,7 @@ async function doLogin() {
   const email = document.getElementById("loginUser").value.trim();
   const password = document.getElementById("loginPass").value;
   const { error } = await db.auth.signInWithPassword({ email, password });
-  if (error) { showToast("登入失敗：帳號或密碼錯誤"); return; }
+  if (error) { showToast("登入失敗：" + (error.status === 400 ? "帳號或密碼錯誤" : error.message)); return; }
   document.getElementById("loginUser").value = "";
   document.getElementById("loginPass").value = "";
   showToast("已登入管理員"); // 畫面切換由 onAuthStateChange 處理
@@ -1011,10 +1129,17 @@ async function init() {
   }
 
   document.getElementById("searchInput").addEventListener("input", renderResults);
-  document.getElementById("addBtn").addEventListener("click", () => addEntry(false));
-  document.getElementById("addPendingBtn").addEventListener("click", () => addEntry(true));
+  document.getElementById("searchIcon").addEventListener("click", () => {
+    const input = document.getElementById("searchInput");
+    input.value = "";
+    renderResults();
+    input.focus();
+  });
+  const addBtns = [document.getElementById("addBtn"), document.getElementById("addPendingBtn")];
+  document.getElementById("addForm").addEventListener("submit", e => { e.preventDefault(); withBusy(addBtns, () => addEntry(false)); });
+  addBtns[1].addEventListener("click", () => withBusy(addBtns, () => addEntry(true)));
   document.getElementById("adminBtn").addEventListener("click", toggleAdmin);
-  document.getElementById("loginForm").addEventListener("submit", e => { e.preventDefault(); doLogin(); });
+  document.getElementById("loginForm").addEventListener("submit", e => { e.preventDefault(); withBusy([document.getElementById("loginSubmit")], doLogin); });
 
   applyAdminUI();
 
@@ -1023,7 +1148,8 @@ async function init() {
     isAdmin = !!session;
     applyAdminUI();
     renderAll();
-    if (isAdmin) seedIfEmpty();
+    // 只在登入事件檢查；延後執行，避免在 auth 回呼內呼叫資料庫造成卡死
+    if (event === "SIGNED_IN") setTimeout(seedIfEmpty, 0);
   });
 
   renderResults();
