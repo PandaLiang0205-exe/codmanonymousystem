@@ -33,14 +33,13 @@
   .band::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse 60% 90% at 18% 70%, color-mix(in srgb, var(--glow) 20%, transparent), transparent 75%); -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); opacity: .5; transition: opacity .6s var(--ease); pointer-events: none; }
   .band:focus-within::before { opacity: 1; }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; }
-  .topbar h1 { margin: 0; font-size: 1.125rem; font-weight: 900; }
+  .topbar h1 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.125rem; font-weight: 900; }
   .search-box { display: flex; align-items: center; gap: clamp(8px, 2vw, 20px); margin-top: clamp(32px, 7vw, 80px); font-size: clamp(1.75rem, 6.4vw, 4.5rem); border-bottom: 4px solid var(--line); cursor: text; transition: border-color .3s var(--ease); }
   .search-box:focus-within { border-color: var(--accent); }
   .count:empty { padding-bottom: 0; }
   .bracket { color: var(--accent); margin-left: -.1em; font: 700 1.25em/1.3 var(--mono); transition: transform .25s var(--ease); }
   .search-box:focus-within .bracket { transform: translateX(-.05em); }
   .search-box input { flex: 1; min-width: 0; width: 100%; padding: .25em 0; border: 0; background: none; color: inherit; font: 900 1em/1.3 var(--sans); outline: 0; caret-color: var(--accent); appearance: none; }
-  .search-box input::placeholder { color: var(--band-ink); opacity: .64; }
   .search-box input::-webkit-search-cancel-button { display: none; }
 
   .demo-banner { background: var(--panel); color: var(--ink); padding: 12px 20px; font-size: .9rem; }
@@ -113,6 +112,7 @@
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
   @keyframes drop { from { transform: translateY(-14px); } }
 
+  @media (max-width: 380px) { .topbar { gap: 8px; } .topbar h1 { gap: 6px; font-size: 1rem; white-space: nowrap; } .topbar h1 img { width: 32px; height: 32px; } #adminBtn { padding-inline: 8px; white-space: nowrap; } }
   @media (max-width: 700px) {
     .add-fields, .admin-lists, .login-form { grid-template-columns: 1fr; }
     ul.results li, .admin-lists ul.results li { grid-template-columns: minmax(0, 1fr); gap: 2px; padding-block: 10px; }
@@ -133,7 +133,7 @@
 <header class="band">
   <div class="wrap">
     <div class="topbar">
-      <h1>匿名查詢系統</h1>
+      <h1><img src="favicon.svg" alt="" width="40" height="40">匿名查詢系統</h1>
       <button id="adminBtn" data-icon="lock" class="ghost mini" type="button">管理員登入</button>
     </div>
     <form id="loginForm" class="login-form" style="display:none;">
@@ -143,7 +143,7 @@
     </form>
     <label class="search-box">
       <span class="bracket" aria-hidden="true">[</span>
-      <input id="searchInput" type="search" aria-label="輸入名字或匿名亂碼" placeholder="名字或匿名亂碼" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <input id="searchInput" type="search" aria-label="輸入名字或匿名亂碼" autocomplete="off" autocapitalize="off" spellcheck="false">
       <span class="search-icon" data-icon="search" aria-hidden="true"></span>
     </label>
   </div>
