@@ -6,438 +6,176 @@
 <title>匿名查詢系統</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
 <style>
-  /* ===== 精緻夜色版 ===== */
+  /* 版面：滿版黃色查詢帶（亂碼開頭的 [ 就是搜尋欄）＋下方安靜的結果表 */
   :root {
-    --bg: #0e1013;
-    --bg-2: #14171b;
-    --card: #181b20;
-    --card-hi: #1c2026;       /* 卡片 hover 提亮 */
-    --field: #101317;
-    --ink: #ecedef;
-    --muted: #8a919b;
-    --line: rgba(255,255,255,0.07);
-    --line-hi: rgba(255,255,255,0.13);
-    --accent: #6dd3b5;
-    --accent-2: #4ab298;
-    --accent-soft: #1a2b25;
-    --ghost: #23272d;
-    --danger: #ea7468;
-    --warn: #e0b465;
-    --warn-soft: rgba(224,180,101,0.15);
-    --radius: 14px;
-    --radius-sm: 10px;
-    --shadow-sm: 0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 2px rgba(0,0,0,0.4);
-    --shadow-md: 0 8px 24px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.04) inset;
-    --ring: 0 0 0 3px rgba(109,211,181,0.22);
-    --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --band: #ffcb2e; --band-ink: #17191c;
+    --bg: #f3f4f2; --panel: #ffffff; --ink: #17191c; --muted: #5b6167;
+    --mark: #ffe08a; --mark-ink: #17191c;
+    --danger: #b3261e; --warn: #7a4d00; --solid: #17191c; --on-solid: #ffffff;
+    --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    --mono: "Martian Mono", ui-monospace, Consolas, monospace;
+    --ease: cubic-bezier(.2,.8,.2,1);
+    color-scheme: light;
   }
-
-  html { color-scheme: dark; }
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background:
-      radial-gradient(1100px 700px at 50% -200px, rgba(109,211,181,0.10), transparent 60%),
-      radial-gradient(900px 600px at 100% 100%, rgba(74,178,152,0.05), transparent 60%),
-      var(--bg);
-    color: var(--ink);
-    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-    font-feature-settings: "ss01", "cv01";
-    line-height: 1.55;
-    -webkit-text-size-adjust: 100%;
-    min-height: 100vh;
-  }
-
-  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 18px 80px; }
-
-  /* ---- 標題:襯線 + 漸入 ---- */
-  header { animation: rise 0.7s var(--ease) both; }
-  header h1 {
-    font-family: "Fraunces", "Noto Serif TC", "PingFang TC", serif;
-    font-weight: 500;
-    font-variation-settings: "opsz" 120, "SOFT" 100;
-    font-size: clamp(1.6rem, 4.5vw, 2.1rem);
-    letter-spacing: 0.02em;
-    margin: 4px 0 6px;
-    background: linear-gradient(180deg, #ffffff 0%, #b9c2c8 130%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  header p {
-    color: var(--muted);
-    margin: 0 0 22px;
-    font-size: 0.92rem;
-    letter-spacing: 0.01em;
-  }
-
-  /* ---- 卡片:漸層細邊 + 微浮 ---- */
-  .card {
-    background: linear-gradient(180deg, var(--card) 0%, var(--bg-2) 100%);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 18px;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow-sm);
-    animation: rise 0.7s var(--ease) both;
-    animation-delay: 0.08s;
-    transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
-  }
-  .card:hover { border-color: var(--line-hi); }
-  .card h2 {
-    font-family: "Noto Serif TC", "Fraunces", serif;
-    font-weight: 500;
-    font-size: 1rem;
-    margin: 0 0 14px;
-    color: var(--accent);
-    letter-spacing: 0.04em;
-  }
-
-  /* ---- 輸入框:聚焦光暈 ---- */
-  input[type="text"], input[type="password"] {
-    width: 100%;
-    padding: 14px 16px;
-    font: inherit;
-    font-size: 1rem;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: var(--field);
-    color: var(--ink);
-    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), background 0.2s var(--ease);
-  }
-  input::placeholder { color: var(--muted); }
-  input:hover { border-color: var(--line-hi); }
-  input:focus {
-    outline: none;
-    border-color: var(--accent);
-    background: #0f1418;
-    box-shadow: var(--ring);
-  }
-
-  .search-box { animation-delay: 0.16s; }
-  .search-box input {
-    font-size: 1.05rem;
-    padding: 16px 18px;
-  }
-
-  /* ---- 按鈕:漸層 + 微浮 + 聚焦環 ---- */
-  button {
-    font-family: inherit;
-    font-size: 0.98rem;
-    font-weight: 500;
-    padding: 12px 18px;
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
-    color: #06120e;
-    cursor: pointer;
-    min-height: 48px;
-    letter-spacing: 0.02em;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 4px 14px rgba(74,178,152,0.18);
-    transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease), filter 0.2s var(--ease);
-  }
-  button:hover { filter: brightness(1.06); box-shadow: 0 1px 0 rgba(255,255,255,0.3) inset, 0 6px 18px rgba(74,178,152,0.28); }
-  button:active { transform: translateY(1px); filter: brightness(0.97); }
-  button:focus-visible { outline: none; box-shadow: var(--ring), 0 4px 14px rgba(74,178,152,0.18); }
-
-  button.secondary {
-    background: var(--accent-soft);
-    color: var(--accent);
-    border-color: var(--line-hi);
-    box-shadow: none;
-  }
-  button.secondary:hover { background: #213830; }
-
-  button.ghost {
-    background: transparent;
-    color: var(--ink);
-    border-color: var(--line-hi);
-    box-shadow: none;
-  }
-  button.ghost:hover { background: var(--ghost); }
-
-  button.danger {
-    background: linear-gradient(180deg, var(--danger) 0%, #c95a4f 100%);
-    color: #1a0805;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 4px 14px rgba(234,116,104,0.22);
-  }
-  button.mini { padding: 9px 14px; font-size: 0.85rem; min-height: 0; }
-
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .add-fields { display: grid; gap: 10px; margin-bottom: 12px; }
-  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
-
-  .count {
-    color: var(--muted);
-    font-size: 0.82rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin: 8px 4px 12px;
-  }
-
-  /* ---- 結果列表:每筆 stagger 進場 ---- */
-  ul.results { list-style: none; padding: 0; margin: 0; }
-  ul.results li {
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    background: linear-gradient(180deg, var(--card) 0%, var(--bg-2) 100%);
-    transition: border-color 0.2s var(--ease), transform 0.2s var(--ease), background 0.2s var(--ease);
-    animation: rise 0.45s var(--ease) both;
-  }
-  ul.results li:hover {
-    border-color: var(--line-hi);
-    background: linear-gradient(180deg, var(--card-hi) 0%, var(--bg-2) 100%);
-  }
-  /* 前 8 筆遞延進場(更多就同步出現,避免太慢) */
-  ul.results li:nth-child(1) { animation-delay: 0.02s; }
-  ul.results li:nth-child(2) { animation-delay: 0.05s; }
-  ul.results li:nth-child(3) { animation-delay: 0.08s; }
-  ul.results li:nth-child(4) { animation-delay: 0.11s; }
-  ul.results li:nth-child(5) { animation-delay: 0.14s; }
-  ul.results li:nth-child(6) { animation-delay: 0.17s; }
-  ul.results li:nth-child(7) { animation-delay: 0.20s; }
-  ul.results li:nth-child(8) { animation-delay: 0.23s; }
-
-  .result-name {
-    font-weight: 700;
-    font-size: 1.06rem;
-    letter-spacing: 0.01em;
-  }
-  .result-code {
-    font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-    font-weight: 500;
-    font-size: 0.92rem;
-    color: var(--accent);
-    word-break: break-all;
-    margin-top: 4px;
-    letter-spacing: -0.01em;
-  }
-  .result-actions { display: flex; gap: 8px; margin-top: 12px; }
-  .recent-time {
-    color: var(--muted);
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
-    margin-top: 8px;
-    text-transform: uppercase;
-  }
-  .pending-badge {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 10px;
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    color: var(--warn);
-    background: var(--warn-soft);
-    border: 1px solid rgba(224,180,101,0.35);
-    border-radius: 999px;
-    vertical-align: 2px;
-  }
-  /* ---- 模擬模式專用 ---- */
-  .demo-banner {
-    background: var(--warn-soft);
-    border: 1px solid rgba(224,180,101,0.35);
-    color: var(--warn);
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    margin: -4px 0 18px;
-    font-size: 0.9rem;
-    letter-spacing: 0.02em;
-    animation: rise 0.5s var(--ease) both;
-  }
-  .empty {
-    color: var(--muted);
-    text-align: center;
-    padding: 32px 0;
-    font-size: 0.95rem;
-    letter-spacing: 0.02em;
-  }
-
-  .edit-fields { display: grid; gap: 10px; }
-
-  /* ---- Toast:略帶彈性的進場 ---- */
-  #toast {
-    position: fixed; left: 50%; bottom: 28px;
-    transform: translateX(-50%) translateY(24px) scale(0.96);
-    background: rgba(28, 32, 38, 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: var(--ink);
-    padding: 12px 22px;
-    border-radius: 999px;
-    border: 1px solid var(--line-hi);
-    font-size: 0.93rem;
-    letter-spacing: 0.02em;
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.35s var(--ease), opacity 0.25s var(--ease);
-    z-index: 50;
-    max-width: 90vw;
-    text-align: center;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.55);
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-
-  .danger-text { color: var(--danger); }
-  details summary {
-    cursor: pointer;
-    color: var(--accent);
-    font-size: 0.92rem;
-    letter-spacing: 0.02em;
-  }
-
-  .admin-only { display: none; }
-  body.admin .admin-only { display: block; animation: rise 0.45s var(--ease) both; }
-
-  /* ---- 登入表單 ---- */
-  .login-form {
-    max-width: 340px; margin: 14px auto 0; text-align: left;
-    display: grid; gap: 10px;
-    animation: rise 0.35s var(--ease) both;
-  }
-
-  /* ---- 對話框:遮罩淡入 + 內容上浮 ---- */
-  .overlay {
-    position: fixed; inset: 0;
-    background: rgba(6, 8, 11, 0.55);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 60; padding: 16px;
-    animation: fade 0.2s var(--ease) both;
-  }
-  .overlay .modal {
-    background: linear-gradient(180deg, var(--card) 0%, var(--bg-2) 100%);
-    border: 1px solid var(--line-hi);
-    border-radius: var(--radius);
-    padding: 22px;
-    max-width: 360px; width: 100%;
-    box-shadow: var(--shadow-md);
-    animation: rise 0.3s var(--ease) both;
-  }
-  .overlay .modal p { margin: 0 0 18px; }
-
-  /* ---- 管理員登入鈕:置中 + 樸素 ---- */
-  #adminBtn {
-    background: transparent;
-    border: 1px solid var(--line-hi);
-    color: var(--muted);
-    box-shadow: none;
-    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
-  }
-  #adminBtn:hover { color: var(--ink); border-color: var(--accent); }
-
-  /* ---- 動畫定義 ---- */
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fade {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: 0.001ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.001ms !important;
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17191c; --panel: #202327; --ink: #f1f2ef; --muted: #a4abb1;
+      --mark: #ffcb2e; --danger: #ff8a7f; --warn: #ffcb2e;
+      --solid: #f1f2ef; --on-solid: #17191c; color-scheme: dark;
     }
   }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 400 1rem/1.5 var(--sans); -webkit-text-size-adjust: 100%; }
+  .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding-inline: 20px; }
+  :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
 
-  /* ---- 手機優化 ---- */
-  @media (max-width: 520px) {
-    .wrap { padding: 18px 14px 64px; }
-    header h1 { font-size: 1.55rem; }
-    header p { font-size: 0.88rem; margin-bottom: 18px; }
-    .card { padding: 16px; border-radius: 12px; }
-    .search-box input { font-size: 1rem; padding: 15px 16px; }
-    button { padding: 11px 16px; min-height: 46px; }
-    button.mini { min-height: 38px; }
-    .result-name { font-size: 1rem; }
-    .result-code { font-size: 0.88rem; }
-    #toast { bottom: 20px; font-size: 0.88rem; padding: 11px 18px; }
+  /* 查詢帶 */
+  .band { background: var(--band); color: var(--band-ink); padding: 14px 0 clamp(32px, 6vw, 64px); }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; }
+  .topbar h1 { margin: 0; font-size: 1.125rem; font-weight: 900; }
+  .search-box { display: flex; align-items: center; gap: clamp(8px, 2vw, 20px); margin-top: clamp(32px, 7vw, 80px); font-size: clamp(1.75rem, 6.4vw, 4.5rem); border-bottom: 4px solid var(--band-ink); cursor: text; transition: box-shadow .2s var(--ease); }
+  .search-box:focus-within { box-shadow: 0 4px 0 var(--band-ink); }
+  .count:empty { padding-bottom: 0; }
+  .bracket { margin-left: -.1em; font: 700 1.25em/1.3 var(--mono); transition: transform .25s var(--ease); }
+  .search-box:focus-within .bracket { transform: translateX(-.05em); }
+  .search-box input { flex: 1; min-width: 0; width: 100%; padding: .25em 0; border: 0; background: none; color: inherit; font: 900 1em/1.3 var(--sans); outline: 0; caret-color: var(--band-ink); appearance: none; }
+  .search-box input::placeholder { color: var(--band-ink); opacity: .64; }
+  .search-box input::-webkit-search-cancel-button { display: none; }
+
+  .demo-banner { background: #17191c; color: #fff; padding: 12px 20px; font-size: .9rem; }
+
+  /* 結果 */
+  main { padding-bottom: 80px; }
+  .count { padding: 24px 0 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  ul.results { list-style: none; padding: 0; margin: 0; }
+  ul.results li { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 5fr); align-items: center; gap: 6px 24px; min-height: 60px; padding: 8px 12px; margin-inline: -12px; transition: background-color .15s; } @media (hover: hover) { ul.results li:not(.empty):hover { background: var(--panel); } } .admin-lists ul.results li { grid-template-columns: minmax(0, 1fr) auto; } .admin-lists .result-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .result-name { font-size: 1.375rem; font-weight: 900; line-height: 1.35; overflow-wrap: anywhere; }
+  .result-code { font: 500 1.0625rem/1.5 var(--mono); font-variant-ligatures: none; overflow-wrap: anywhere; user-select: all; }
+  mark { background: var(--mark); color: var(--mark-ink); }
+  .result-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .recent-time { grid-column: 1 / -1; color: var(--muted); font-size: .875rem; }
+  .pending-badge { display: inline-block; margin-left: 10px; font-size: .8125rem; font-weight: 700; color: var(--warn); border-bottom: 2px dashed currentColor; }
+  ul.results li.empty { display: block; min-height: 0; padding: 8px 12px 32px; color: var(--muted); font-size: 1.0625rem; }
+
+  /* 管理區 */
+  .admin-only { display: none; }
+  body.admin .admin-only { display: block; }
+  .admin-area { margin-top: 48px; }
+  .admin-area h2 { margin: 0 0 16px; font-size: 1.375rem; font-weight: 900; }
+  .add-panel { background: var(--panel); padding: clamp(18px, 3vw, 28px); }
+  .add-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .field { display: grid; gap: 6px; font-size: .875rem; font-weight: 700; min-width: 0; }
+  .admin-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; align-items: start; }
+  .admin-lists > * { min-width: 0; }
+  .admin-lists .result-name { font-size: 1.0625rem; }
+  .admin-lists .result-code { font-size: .875rem; }
+  .field input, .edit-fields input { width: 100%; min-height: 48px; padding: 10px 12px; border: 2px solid var(--muted); border-radius: 0; background: var(--bg); color: var(--ink); font: 500 1rem/1.4 var(--sans); }
+  .field input:focus, .edit-fields input:focus { outline: 3px solid var(--band); outline-offset: 0; border-color: var(--ink); }
+  .edit-fields { grid-column: 1 / -1; display: grid; gap: 10px; }
+  .field input.code-input, .edit-fields input.code-input { font-family: var(--mono); }
+
+  /* 按鈕 */
+  button { min-height: 48px; padding: 10px 20px; border: 2px solid var(--solid); border-radius: 0; background: var(--solid); color: var(--on-solid); font: 700 1rem/1.3 var(--sans); cursor: pointer; transition: transform .15s var(--ease), background-color .15s, color .15s; }
+  button:active { transform: translateY(2px); }
+  button.secondary, button.ghost, button.danger { background: transparent; color: var(--ink); border-color: currentColor; }
+  button.danger { color: var(--danger); }
+  button.mini { min-height: 44px; padding: 8px 14px; font-size: .875rem; }
+  @media (hover: hover) {
+    button:hover, button.secondary:hover, button.ghost:hover { background: var(--band); border-color: var(--band-ink); color: var(--band-ink); }
+    button.danger:hover { background: var(--danger); border-color: var(--danger); color: var(--bg); }
   }
-  @media (max-width: 420px) {
-    .row2 { grid-template-columns: 1fr; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  #adminBtn { color: var(--band-ink); border-color: var(--band-ink); background: transparent; }
+  #adminBtn:hover { background: var(--band-ink); color: var(--band); }
+  .login-form { grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; padding-top: 18px; animation: drop .25s var(--ease); }
+  .login-form .field input { background: #fff; color: #17191c; border-color: #17191c; }
+  .login-form .field input:focus { outline-color: #17191c; }
+  .login-form #loginSubmit { background: #17191c; color: #fff; border-color: #17191c; }
+
+  /* 確認框與提示 */
+  .overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgb(10 11 13 / .7); }
+  .modal { width: 100%; max-width: 400px; padding: 28px; background: var(--panel); animation: drop .25s var(--ease); }
+  .modal p { margin: 0 0 24px; font-size: 1.125rem; font-weight: 700; }
+  #toast { position: fixed; z-index: 70; left: 50%; bottom: 24px; max-width: 90vw; padding: 14px 22px; background: var(--solid); color: var(--on-solid); font-weight: 700; opacity: 0; transform: translate(-50%, 20px); pointer-events: none; transition: transform .25s var(--ease), opacity .2s; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @keyframes drop { from { transform: translateY(-14px); } }
+
+  @media (max-width: 700px) {
+    .add-fields, .admin-lists, .login-form { grid-template-columns: 1fr; }
+    ul.results li, .admin-lists ul.results li { grid-template-columns: minmax(0, 1fr); gap: 2px; padding-block: 10px; }
+    .result-actions { justify-content: flex-start; padding-top: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <!-- 模擬模式提示橫條（只有在網址 #demo 時才顯示） -->
-  <div id="demoBanner" class="demo-banner" style="display:none;">
-    🛠 <strong>模擬登入模式</strong> ─ 你看到的是示範資料,新增/編輯/刪除只會存在這個瀏覽器分頁;重新整理會回到初始示範資料,不會寫進 Supabase。
+<!-- 模擬模式提示橫條（只有在網址 #demo 時才顯示） -->
+<div id="demoBanner" class="demo-banner" style="display:none;">
+  <strong>模擬登入模式</strong>：這裡是示範資料，變更不會寫進 Supabase，重新整理就會還原。
+</div>
+
+<!-- ===== 查詢區塊 ===== -->
+<header class="band">
+  <div class="wrap">
+    <div class="topbar">
+      <h1>匿名查詢系統</h1>
+      <button id="adminBtn" class="ghost mini" type="button">管理員登入</button>
+    </div>
+    <form id="loginForm" class="login-form" style="display:none;">
+      <label class="field">帳號（Email）<input id="loginUser" type="text" inputmode="email" autocomplete="off"></label>
+      <label class="field">密碼<input id="loginPass" type="password" autocomplete="off"></label>
+      <button id="loginSubmit" type="submit">登入</button>
+    </form>
+    <label class="search-box">
+      <span class="bracket" aria-hidden="true">[</span>
+      <input id="searchInput" type="search" aria-label="輸入名字或匿名亂碼" placeholder="名字或匿名亂碼" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </label>
   </div>
+</header>
 
-  <header>
-    <h1>匿名查詢系統</h1>
-    <p>輸入名字或匿名亂碼，即時查詢對應資料。</p>
-  </header>
-
-  <!-- ===== 查詢區塊 ===== -->
-  <div class="card search-box">
-    <input id="searchInput" type="text" placeholder="輸入名字或匿名亂碼…" autocomplete="off">
-  </div>
-
-  <div class="count" id="count"></div>
+<main class="wrap">
+  <div class="count" id="count" role="status"></div>
   <ul class="results" id="results"></ul>
 
-  <!-- ===== 新增資料區塊（僅管理員可見） ===== -->
-  <div class="card admin-only">
-    <h2>新增資料</h2>
-    <div class="add-fields">
-      <input id="addName" type="text" placeholder="名字" autocomplete="off">
-      <input id="addCode" type="text" placeholder="匿名亂碼（開頭的 [ 可不輸入，系統會自動補上）" autocomplete="off">
-    </div>
-    <div class="btn-row">
-      <button id="addBtn">新增</button>
-      <button id="addPendingBtn" class="secondary">加入待確認</button>
-    </div>
-  </div>
-
-  <!-- ===== 待確認清單（僅管理員可見） ===== -->
-  <div class="card admin-only">
-    <h2>待確認清單</h2>
-    <ul class="results" id="pendingList"></ul>
-  </div>
-
-  <!-- ===== 最近新增（僅管理員可見） ===== -->
-  <div class="card admin-only">
-    <h2>最近新增</h2>
-    <ul class="results" id="recentList"></ul>
-  </div>
-
-  <!-- ===== 管理員登入／登出（一般訪客只會看到「管理員登入」） ===== -->
-  <div style="text-align:center; padding:8px 0 24px;">
-    <button id="adminBtn" class="ghost mini">管理員登入</button>
-
-    <!-- 頁面內建的登入表單（不使用會被預覽擋掉的彈出視窗） -->
-    <div id="loginForm" class="card login-form" style="display:none;">
-      <input id="loginUser" type="text" placeholder="帳號（Email）" autocomplete="off">
-      <input id="loginPass" type="password" placeholder="密碼" autocomplete="off">
-      <button id="loginSubmit">登入</button>
+  <!-- ===== 管理區（僅管理員可見） ===== -->
+  <div class="admin-only admin-area">
+    <section class="add-panel">
+      <h2>新增資料</h2>
+      <div class="add-fields">
+        <label class="field">名字<input id="addName" type="text" autocomplete="off"></label>
+        <label class="field">匿名亂碼（開頭的 [ 可不輸入）<input id="addCode" class="code-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      </div>
+      <div class="btn-row">
+        <button id="addBtn" type="button">新增</button>
+        <button id="addPendingBtn" class="secondary" type="button">加入待確認</button>
+      </div>
+    </section>
+    <div class="admin-lists">
+      <section><h2>待確認清單</h2><ul class="results" id="pendingList"></ul></section>
+      <section><h2>最近新增</h2><ul class="results" id="recentList"></ul></section>
     </div>
   </div>
-</div>
+</main>
 
 <!-- ===== 自訂確認對話框（取代會被預覽擋掉的 confirm()） ===== -->
 <div id="confirmOverlay" class="overlay" style="display:none;">
-  <div class="modal">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
     <p id="confirmMsg"></p>
     <div class="btn-row" style="justify-content:flex-end;">
-      <button id="confirmCancel" class="ghost mini">取消</button>
-      <button id="confirmOk" class="danger mini">確定</button>
+      <button id="confirmCancel" class="ghost mini" type="button">取消</button>
+      <button id="confirmOk" class="danger mini" type="button">確定</button>
     </div>
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="status"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
@@ -796,6 +534,33 @@ let entries = [];
 let editingId = null;
 /* 是否為已登入的管理員 */
 let isAdmin = false;
+/* 資料是否已讀取完成 */
+let loaded = false;
+/* 上一次顯示的結果 id：只有新出現的列才播放解碼動畫 */
+let shownIds = new Set();
+const canDecode = !!(window.gsap && window.ScrambleTextPlugin);
+if (canDecode) gsap.registerPlugin(ScrambleTextPlugin);
+
+/* 把符合查詢的文字標出來（只用 DOM 節點，不用 innerHTML） */
+function setHighlighted(el, text, query) {
+  const lower = text.toLowerCase();
+  const i = query && lower.length === text.length ? lower.indexOf(query) : -1;
+  if (i < 0) { el.replaceChildren(text); return; }
+  const m = document.createElement("mark");
+  m.textContent = text.slice(i, i + query.length);
+  el.replaceChildren(text.slice(0, i), m, text.slice(i + query.length));
+}
+
+/* 名字從亂碼字元解出來。動畫庫沒載入或使用者偏好減少動態時直接顯示名字 */
+function decodeName(el, item, query, delay) {
+  if (!canDecode || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  el.textContent = item.code;
+  gsap.to(el, {
+    duration: 0.55, delay, ease: "none",
+    scrambleText: { text: item.name, chars: item.code, speed: 0.6 },
+    onComplete: () => setHighlighted(el, item.name, query)
+  });
+}
 
 
 /* ---------- 2 & 3. 解析 + 清洗（給「自動匯入預設」與「重置」使用） ---------- */
@@ -828,6 +593,7 @@ async function loadEntries() {
     .order("created_at", { ascending: true });
   if (error) { showToast("讀取失敗：" + error.message); return; }
   entries = data || [];
+  loaded = true;
   renderAll();
 }
 
@@ -949,7 +715,8 @@ function renderResults() {
     countEl.textContent = "";
     const li = document.createElement("li");
     li.className = "empty";
-    li.textContent = "請在上方輸入名字或匿名亂碼開始查詢";
+    shownIds = new Set();
+    li.textContent = loaded ? `已收錄 ${entries.length} 筆` : "資料載入中";
     listEl.appendChild(li);
     return;
   }
@@ -959,11 +726,17 @@ function renderResults() {
     item.code.toLowerCase().includes(query)
   );
 
+  if (!loaded) {
+    countEl.textContent = "資料載入中";
+    return;
+  }
+
   if (matched.length === 0) {
+    shownIds = new Set();
     countEl.textContent = "";
     const li = document.createElement("li");
     li.className = "empty";
-    li.textContent = "查無資料";
+    li.textContent = "查無資料，換名字或亂碼的一小段試試";
     listEl.appendChild(li);
     return;
   }
@@ -971,11 +744,18 @@ function renderResults() {
   countEl.textContent = `共 ${matched.length} 筆結果`;
 
   // 全程用 textContent / DOM 建立，不使用 innerHTML 插入使用者輸入，避免 XSS
+  let fresh = 0;
   matched.forEach(item => {
-    listEl.appendChild(
-      editingId === item.id ? buildEditRow(item) : buildViewRow(item)
-    );
+    const editing = editingId === item.id;
+    const li = editing ? buildEditRow(item) : buildViewRow(item);
+    listEl.appendChild(li);
+    if (editing) return;
+    const nameText = li.querySelector(".name-text");
+    setHighlighted(nameText, item.name, query);
+    setHighlighted(li.querySelector(".result-code"), item.code, query);
+    if (!shownIds.has(item.id) && fresh < 8) decodeName(nameText, item, query, fresh++ * 0.04);
   });
+  shownIds = new Set(matched.map(item => item.id));
 }
 
 /* 建立「一般顯示」列：訪客只看到名字與亂碼；管理員才看到編輯／刪除 */
@@ -984,7 +764,10 @@ function buildViewRow(item) {
 
   const nameEl = document.createElement("div");
   nameEl.className = "result-name";
-  nameEl.textContent = item.name;
+  const nameText = document.createElement("span");
+  nameText.className = "name-text";
+  nameText.textContent = item.name;
+  nameEl.appendChild(nameText);
   if (item.pending) {
     const badge = document.createElement("span");
     badge.className = "pending-badge";
@@ -1038,7 +821,7 @@ function buildEditRow(item) {
   nameInput.type = "text"; nameInput.value = item.name; nameInput.placeholder = "名字";
 
   const codeInput = document.createElement("input");
-  codeInput.type = "text"; codeInput.value = item.code; codeInput.placeholder = "匿名亂碼";
+  codeInput.type = "text"; codeInput.value = item.code; codeInput.placeholder = "匿名亂碼"; codeInput.className = "code-input";
 
   const actions = document.createElement("div");
   actions.className = "result-actions";
@@ -1219,7 +1002,7 @@ async function init() {
   document.getElementById("addBtn").addEventListener("click", () => addEntry(false));
   document.getElementById("addPendingBtn").addEventListener("click", () => addEntry(true));
   document.getElementById("adminBtn").addEventListener("click", toggleAdmin);
-  document.getElementById("loginSubmit").addEventListener("click", doLogin);
+  document.getElementById("loginForm").addEventListener("submit", e => { e.preventDefault(); doLogin(); });
 
   applyAdminUI();
 
@@ -1227,10 +1010,11 @@ async function init() {
   db.auth.onAuthStateChange((event, session) => {
     isAdmin = !!session;
     applyAdminUI();
-    renderResults();
+    renderAll();
     if (isAdmin) seedIfEmpty();
   });
 
+  renderResults();
   await loadEntries();
 
   // 即時同步：別人（或你）改動資料時自動重新載入。
